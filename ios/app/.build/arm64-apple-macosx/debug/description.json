@@ -1,0 +1,885 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.xctest/Contents/MacOS/ContextRestoreIOSKitPackageTests",
+      "packagePath" : "/Users/avitalmintz/Desktop/new project/ios/app",
+      "productName" : "ContextRestoreIOSKitPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.ContextRestoreIOSKit-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/sources",
+      "importPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/NotificationSettings.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/TaskModels.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/APIClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/BackendConfig.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Notifications/NotificationScheduler.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskFeedViewModel.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskInsightsEngine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AIBriefingTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AppTheme.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/ContextRestoreRootView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/DetailedBriefsTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/GapAnalysisTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/OverviewTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/SettingsTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "ContextRestoreIOSKit",
+      "moduleOutputPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules/ContextRestoreIOSKit.swiftmodule",
+      "objects" : [
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationSettings.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskModels.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/APIClient.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/BackendConfig.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationScheduler.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskFeedViewModel.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskInsightsEngine.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AIBriefingTabView.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AppTheme.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/ContextRestoreRootView.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/DetailedBriefsTabView.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/GapAnalysisTabView.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/OverviewTabView.swift.o",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/SettingsTabView.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/include/ContextRestoreIOSKit-Swift.h",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "app"
+      ],
+      "outputFileMapPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationSettings.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskModels.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/APIClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/BackendConfig.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationScheduler.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskFeedViewModel.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskInsightsEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AIBriefingTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AppTheme.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/ContextRestoreRootView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/DetailedBriefsTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/GapAnalysisTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/OverviewTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/SettingsTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules/ContextRestoreIOSKit.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/NotificationSettings.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/TaskModels.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/APIClient.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/BackendConfig.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Notifications/NotificationScheduler.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskFeedViewModel.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskInsightsEngine.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AIBriefingTabView.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AppTheme.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/ContextRestoreRootView.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/DetailedBriefsTabView.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/GapAnalysisTabView.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/OverviewTabView.swift",
+        "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/SettingsTabView.swift"
+      ],
+      "tempsPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.ContextRestoreIOSKitPackageTests-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/sources",
+      "importPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules/ContextRestoreIOSKitTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "ContextRestoreIOSKitPackageTests",
+      "moduleOutputPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules/ContextRestoreIOSKitPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/include/ContextRestoreIOSKitPackageTests-Swift.h",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "app"
+      ],
+      "outputFileMapPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules/ContextRestoreIOSKitPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.ContextRestoreIOSKitTests-arm64-apple-macosx15.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/sources",
+      "importPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Tests/ContextRestoreIOSKitTests/TaskInsightsEngineTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules/ContextRestoreIOSKit.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "ContextRestoreIOSKitTests",
+      "moduleOutputPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules/ContextRestoreIOSKitTests.swiftmodule",
+      "objects" : [
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/TaskInsightsEngineTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "app"
+      ],
+      "outputFileMapPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/TaskInsightsEngineTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules/ContextRestoreIOSKitTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/avitalmintz/Desktop/new project/ios/app/Tests/ContextRestoreIOSKitTests/TaskInsightsEngineTests.swift"
+      ],
+      "tempsPath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "ContextRestoreIOSKit" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ContextRestoreIOSKit",
+      "-package-name",
+      "app",
+      "-c",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/NotificationSettings.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/TaskModels.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/APIClient.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/BackendConfig.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Notifications/NotificationScheduler.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskFeedViewModel.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskInsightsEngine.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AIBriefingTabView.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AppTheme.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/ContextRestoreRootView.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/DetailedBriefsTabView.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/GapAnalysisTabView.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/OverviewTabView.swift",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/SettingsTabView.swift",
+      "-I",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/include/ContextRestoreIOSKit-Swift.h",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "app",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "ContextRestoreIOSKitPackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ContextRestoreIOSKitPackageTests",
+      "-package-name",
+      "app",
+      "-c",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/include/ContextRestoreIOSKitPackageTests-Swift.h",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "app",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "ContextRestoreIOSKitTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ContextRestoreIOSKitTests",
+      "-package-name",
+      "app",
+      "-c",
+      "/Users/avitalmintz/Desktop/new project/ios/app/Tests/ContextRestoreIOSKitTests/TaskInsightsEngineTests.swift",
+      "-I",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "app",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "ContextRestoreIOSKit" : [
+
+    ],
+    "ContextRestoreIOSKitPackageTests" : [
+      "ContextRestoreIOSKitTests",
+      "ContextRestoreIOSKit"
+    ],
+    "ContextRestoreIOSKitTests" : [
+      "ContextRestoreIOSKit"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/NotificationSettings.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/TaskModels.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/APIClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/BackendConfig.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Notifications/NotificationScheduler.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskFeedViewModel.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskInsightsEngine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AIBriefingTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AppTheme.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/ContextRestoreRootView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/DetailedBriefsTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/GapAnalysisTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/OverviewTabView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/SettingsTabView.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/sources"
+    },
+    "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/sources"
+    },
+    "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AIBriefingTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/APIClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AppTheme.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/BackendConfig.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/ContextRestoreRootView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/DetailedBriefsTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/GapAnalysisTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationScheduler.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationSettings.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/OverviewTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/SettingsTabView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskFeedViewModel.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskInsightsEngine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskModels.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/TaskInsightsEngineTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/avitalmintz/Desktop/new project/ios/app/Tests/ContextRestoreIOSKitTests/TaskInsightsEngineTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/sources"
+    },
+    "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

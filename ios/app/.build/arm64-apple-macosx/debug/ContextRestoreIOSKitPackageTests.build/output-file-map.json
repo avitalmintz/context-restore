@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/master.swiftdeps"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.derived/runner.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/runner.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitPackageTests.build/runner.dia"
+  }
+}

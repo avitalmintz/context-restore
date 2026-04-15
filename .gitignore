@@ -1,0 +1,29 @@
+# Node
+node_modules/
+backend/node_modules/
+extension/node_modules/
+extension/dist/
+
+# Python
+__pycache__/
+*.py[cod]
+backend/.venv/
+backend/venv/
+backend/*.db
+backend/tests/*.db
+backend/.pytest_cache/
+
+# OS
+.DS_Store
+
+# Xcode / iOS
+ios/DerivedData/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+
+# Env
+.env
+backend/.env
+*.env.local
