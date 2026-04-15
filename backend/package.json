@@ -1,0 +1,18 @@
+{
+  "name": "context-restore-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sync backend for Context Restore extension and iOS companion",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/scripts/run-migrations.js",
+    "start:prod": "node src/scripts/run-migrations.js && node src/server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

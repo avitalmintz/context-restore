@@ -1,0 +1,103 @@
+{
+  "": {
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/master.swiftdeps"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/NotificationSettings.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationSettings.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationSettings.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationSettings~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationSettings.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationSettings.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Models/TaskModels.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskModels.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskModels.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskModels~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskModels.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskModels.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/APIClient.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/APIClient.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/APIClient.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/APIClient~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/APIClient.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/APIClient.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Networking/BackendConfig.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/BackendConfig.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/BackendConfig.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/BackendConfig~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/BackendConfig.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/BackendConfig.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Notifications/NotificationScheduler.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationScheduler.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationScheduler.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationScheduler~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationScheduler.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/NotificationScheduler.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskFeedViewModel.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskFeedViewModel.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskFeedViewModel.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskFeedViewModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskFeedViewModel.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskFeedViewModel.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/ViewModels/TaskInsightsEngine.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskInsightsEngine.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskInsightsEngine.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskInsightsEngine~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskInsightsEngine.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/TaskInsightsEngine.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AIBriefingTabView.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AIBriefingTabView.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AIBriefingTabView.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AIBriefingTabView~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AIBriefingTabView.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AIBriefingTabView.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/AppTheme.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AppTheme.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AppTheme.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AppTheme~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AppTheme.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/AppTheme.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/ContextRestoreRootView.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/ContextRestoreRootView.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/ContextRestoreRootView.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/ContextRestoreRootView~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/ContextRestoreRootView.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/ContextRestoreRootView.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/DetailedBriefsTabView.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/DetailedBriefsTabView.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/DetailedBriefsTabView.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/DetailedBriefsTabView~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/DetailedBriefsTabView.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/DetailedBriefsTabView.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/GapAnalysisTabView.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/GapAnalysisTabView.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/GapAnalysisTabView.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/GapAnalysisTabView~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/GapAnalysisTabView.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/GapAnalysisTabView.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/OverviewTabView.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/OverviewTabView.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/OverviewTabView.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/OverviewTabView~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/OverviewTabView.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/OverviewTabView.dia"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Sources/ContextRestoreIOSKit/Views/SettingsTabView.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/SettingsTabView.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/SettingsTabView.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/SettingsTabView~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/SettingsTabView.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKit.build/SettingsTabView.dia"
+  }
+}

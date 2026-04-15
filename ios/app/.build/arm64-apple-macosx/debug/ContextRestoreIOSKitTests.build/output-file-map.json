@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/master.swiftdeps"
+  },
+  "/Users/avitalmintz/Desktop/new project/ios/app/Tests/ContextRestoreIOSKitTests/TaskInsightsEngineTests.swift": {
+    "dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/TaskInsightsEngineTests.d",
+    "object": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/TaskInsightsEngineTests.swift.o",
+    "swiftmodule": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/TaskInsightsEngineTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/TaskInsightsEngineTests.swiftdeps",
+    "diagnostics": "/Users/avitalmintz/Desktop/new project/ios/app/.build/arm64-apple-macosx/debug/ContextRestoreIOSKitTests.build/TaskInsightsEngineTests.dia"
+  }
+}
