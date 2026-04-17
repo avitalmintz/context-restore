@@ -63,7 +63,38 @@ const TOPIC_STOPWORDS = new Set([
   "paper",
   "article",
   "blog",
-  "post"
+  "post",
+  "these",
+  "those",
+  "thing",
+  "things",
+  "option",
+  "options",
+  "around",
+  "overview",
+  "compare"
+]);
+const SEARCH_DOMAINS = new Set([
+  "google.com",
+  "bing.com",
+  "duckduckgo.com",
+  "search.yahoo.com",
+  "ecosia.org"
+]);
+const TITLE_TOPIC_STOPWORDS = new Set([
+  ...TOPIC_STOPWORDS,
+  "option",
+  "options",
+  "compare",
+  "comparison",
+  "task",
+  "thread",
+  "work",
+  "plan",
+  "planning",
+  "buy",
+  "learn",
+  "continue"
 ]);
 
 function clamp(value, min, max) {
@@ -127,6 +158,23 @@ function jaccard(tokensA, tokensB) {
 
   const union = setA.size + setB.size - intersection;
   return union ? intersection / union : 0;
+}
+
+function overlapRatio(tokensA, tokensB) {
+  if (!tokensA.length || !tokensB.length) {
+    return 0;
+  }
+
+  const setA = new Set(tokensA);
+  const setB = new Set(tokensB);
+  let common = 0;
+  for (const token of setA) {
+    if (setB.has(token)) {
+      common += 1;
+    }
+  }
+
+  return common / Math.max(setA.size, setB.size);
 }
 
 function sharedTokenCount(tokensA, tokensB) {
@@ -281,9 +329,65 @@ function extractTopicTokens(urlString, semanticTokens = [], queryTokens = []) {
   }
 }
 
+function intentTokensForPage(page) {
+  const source = page.isSearchLike ? page.queryTokens : page.topicTokens;
+  const unique = new Set();
+  for (const token of source || []) {
+    if (token.length < 3 || TOPIC_STOPWORDS.has(token)) {
+      continue;
+    }
+    unique.add(token);
+  }
+  return [...unique];
+}
+
+function formatDurationMinutes(activeMs) {
+  const minutes = Math.max(1, Math.round(toNum(activeMs, 0) / 60_000));
+  return `${minutes} min`;
+}
+
+function titleTopic(topic) {
+  const tokens = tokenize(topic || "").filter((token) => !TITLE_TOPIC_STOPWORDS.has(token));
+  if (!tokens.length) {
+    return "";
+  }
+  return tokens.slice(0, 3).join(" ");
+}
+
+function statePriority(pageState) {
+  if (pageState === "unopened") return 0;
+  if (pageState === "skimmed") return 1;
+  if (pageState === "bounced") return 2;
+  return 3;
+}
+
+function queryFromUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const keys = ["q", "query", "k", "keyword", "keywords", "search_query", "field-keywords", "term", "p"];
+    for (const key of keys) {
+      const value = String(parsed.searchParams.get(key) || "").trim();
+      if (value) {
+        return value.replace(/\+/g, " ");
+      }
+    }
+  } catch {
+    // Ignore parsing errors.
+  }
+  return "";
+}
+
+function hasTaskSignal(taskTextParts, pattern) {
+  return pattern.test(taskTextParts.join(" ").toLowerCase());
+}
+
 function pageSimilarity(pageA, pageB) {
   const semantic = jaccard(pageA.semanticTokens, pageB.semanticTokens);
   const topicOverlap = jaccard(pageA.topicTokens, pageB.topicTokens);
+  const intentA = intentTokensForPage(pageA);
+  const intentB = intentTokensForPage(pageB);
+  const intentOverlap = jaccard(intentA, intentB);
+  const sharedIntentCount = sharedTokenCount(intentA, intentB);
 
   let domainOverlap = 0;
   if (pageA.domain === pageB.domain) {
@@ -303,6 +407,19 @@ function pageSimilarity(pageA, pageB) {
   }
 
   const queryOverlap = jaccard(pageA.queryTokens, pageB.queryTokens);
+  const searchIntentBridge =
+    (pageA.isSearchLike || pageB.isSearchLike) &&
+    (sharedIntentCount >= 1 || queryOverlap >= 0.16 || topicOverlap >= 0.2)
+      ? 0.12
+      : 0;
+  const searchMismatchPenalty =
+    (pageA.isSearchLike || pageB.isSearchLike) &&
+    sharedIntentCount === 0 &&
+    intentOverlap < 0.06 &&
+    queryOverlap < 0.06 &&
+    topicOverlap < 0.08
+      ? -0.34
+      : 0;
 
   let revisitCooccurrence = 0;
   if (pageA.revisitCount > 0 && pageB.revisitCount > 0) {
@@ -322,24 +439,31 @@ function pageSimilarity(pageA, pageB) {
     pageA.categoryHint !== "other" &&
     pageB.categoryHint !== "other"
   ) {
-    categoryAdjustment = -0.2;
+    categoryAdjustment = -0.3;
   }
 
   return {
     score:
-      0.28 * semantic +
-      0.2 * domainOverlap +
-      0.2 * temporalAdjacency +
-      0.22 * topicOverlap +
+      0.22 * semantic +
+      0.17 * domainOverlap +
+      0.17 * temporalAdjacency +
+      0.2 * topicOverlap +
       0.1 * queryOverlap +
+      0.12 * intentOverlap +
       0.1 * revisitCooccurrence +
       topicTemporalBoost +
+      searchIntentBridge +
+      searchMismatchPenalty +
       categoryAdjustment,
     semantic,
     topicOverlap,
     domainOverlap,
     temporalAdjacency,
     queryOverlap,
+    intentOverlap,
+    sharedIntentCount,
+    searchIntentBridge,
+    searchMismatchPenalty,
     revisitCooccurrence,
     topicTemporalBoost,
     categoryAdjustment
@@ -351,6 +475,8 @@ function componentSignature(componentPages) {
   const semanticTokens = [];
   const topicTokens = [];
   const queryTokens = [];
+  const intentTokens = [];
+  let searchLikeCount = 0;
   let minTs = Number.POSITIVE_INFINITY;
   let maxTs = 0;
 
@@ -359,6 +485,10 @@ function componentSignature(componentPages) {
     semanticTokens.push(...page.semanticTokens);
     topicTokens.push(...page.topicTokens);
     queryTokens.push(...page.queryTokens);
+    intentTokens.push(...intentTokensForPage(page));
+    if (page.isSearchLike) {
+      searchLikeCount += 1;
+    }
     minTs = Math.min(minTs, page.firstTs);
     maxTs = Math.max(maxTs, page.lastTs);
   }
@@ -374,6 +504,8 @@ function componentSignature(componentPages) {
     semanticTokens,
     topicTokens,
     queryTokens,
+    intentTokens,
+    searchLikeCount,
     minTs,
     maxTs
   };
@@ -391,9 +523,40 @@ function shouldMergeComponents(componentA, componentB, pages) {
   const topicOverlap = jaccard(sigA.topicTokens, sigB.topicTokens);
   const sharedTopics = sharedTokenCount(sigA.topicTokens, sigB.topicTokens);
   const queryOverlap = jaccard(sigA.queryTokens, sigB.queryTokens);
+  const intentOverlap = jaccard(sigA.intentTokens, sigB.intentTokens);
+  const sharedIntent = sharedTokenCount(sigA.intentTokens, sigB.intentTokens);
+  const isSearchHeavy = sigA.searchLikeCount > 0 || sigB.searchLikeCount > 0;
+
+  if (
+    isSearchHeavy &&
+    sharedIntent === 0 &&
+    intentOverlap < 0.05 &&
+    queryOverlap < 0.08 &&
+    topicOverlap < 0.1
+  ) {
+    return false;
+  }
 
   if (sameDomain) {
+    if (
+      SEARCH_DOMAINS.has(sigA.primaryDomain) &&
+      SEARCH_DOMAINS.has(sigB.primaryDomain) &&
+      sharedIntent === 0 &&
+      queryOverlap < 0.14 &&
+      topicOverlap < 0.14
+    ) {
+      return false;
+    }
+
     if (topicOverlap >= 0.1 || semanticOverlap >= 0.15 || queryOverlap >= 0.1) {
+      return true;
+    }
+
+    if (
+      temporalDistance <= 2 * 60 * 60 * 1000 &&
+      (sharedIntent >= 1 || sharedTopics >= 1 || queryOverlap >= 0.06) &&
+      (sigA.category === "other" || sigB.category === "other")
+    ) {
       return true;
     }
 
@@ -401,7 +564,7 @@ function shouldMergeComponents(componentA, componentB, pages) {
       temporalDistance <= 20 * 60 * 1000 &&
       sigA.category === sigB.category &&
       sigA.category !== "other" &&
-      (topicOverlap >= 0.08 || semanticOverlap >= 0.08 || queryOverlap >= 0.05)
+      (topicOverlap >= 0.08 || semanticOverlap >= 0.08 || queryOverlap >= 0.05 || intentOverlap >= 0.08)
     ) {
       return true;
     }
@@ -420,7 +583,14 @@ function shouldMergeComponents(componentA, componentB, pages) {
     sigA.category === "shopping" &&
     sigB.category === "shopping" &&
     temporalDistance <= 3 * 60 * 60 * 1000 &&
-    (sharedTopics >= 1 || topicOverlap >= 0.04 || semanticOverlap >= 0.06 || queryOverlap >= 0.03)
+    (
+      sharedIntent >= 1 ||
+      intentOverlap >= 0.06 ||
+      sharedTopics >= 1 ||
+      topicOverlap >= 0.04 ||
+      semanticOverlap >= 0.06 ||
+      queryOverlap >= 0.03
+    )
   ) {
     return true;
   }
@@ -523,7 +693,7 @@ function splitOutliersInComponent(indexes, pages) {
 function classifyTaskCategory(text) {
   const haystack = text.toLowerCase();
   if (
-    /shop|product|checkout|cart|jacket|dress|reformation|gap|american eagle|zara|h&m|uniqlo/.test(
+    /shop|product|checkout|cart|jacket|dress|shirt|pants|shoe|sneaker|bag|soccer|ball|buy|price|reformation|gap|american eagle|zara|h&m|uniqlo|adidas|nike|bloomingdale|rent the runway|amazon/.test(
       haystack
     )
   ) {
@@ -540,6 +710,10 @@ function classifyTaskCategory(text) {
 
   if (/reddit|x\.com|twitter|instagram|tiktok|youtube/.test(haystack)) {
     return "social";
+  }
+
+  if (/linkedin|indeed|greenhouse|lever\.co|job|career|resume|cv|interview/.test(haystack)) {
+    return "job";
   }
 
   return "other";
@@ -589,6 +763,36 @@ function computeCompletionScore(page) {
   );
 }
 
+function estimateRemainingReadMs(page, completionScore) {
+  const progressPct = clamp(
+    Math.max(toNum(completionScore, 0), toNum(page.maxScrollPct, 0) * 0.85),
+    0,
+    100
+  );
+  if (progressPct >= 97) {
+    return 0;
+  }
+
+  const activeMs = Math.max(0, toNum(page.activeMs, 0));
+  const progressRatio = progressPct / 100;
+
+  let totalEstimateMs = 0;
+  if (progressRatio >= 0.08 && activeMs >= 10_000) {
+    totalEstimateMs = activeMs / progressRatio;
+  } else if (page.isSearchLike) {
+    totalEstimateMs = 90_000;
+  } else if (page.categoryHint === "shopping") {
+    totalEstimateMs = 210_000;
+  } else if (page.categoryHint === "research") {
+    totalEstimateMs = 330_000;
+  } else {
+    totalEstimateMs = 240_000;
+  }
+
+  totalEstimateMs = clamp(totalEstimateMs, 60_000, 30 * 60_000);
+  return Math.max(0, Math.round(totalEstimateMs - activeMs));
+}
+
 function inferTaskTopic(componentPages) {
   const counts = new Map();
 
@@ -627,55 +831,464 @@ function inferTaskTopic(componentPages) {
 }
 
 function taskTitleFor(category, primaryDomain, topic) {
-  const topicText = topic ? topic.replace(/\s+/g, " ").trim() : "";
+  const normalizedTopic = titleTopic(topic);
 
   if (category === "shopping") {
-    return topicText ? `Compare ${topicText} options` : `Compare items on ${primaryDomain}`;
+    return normalizedTopic ? `Buy ${normalizedTopic}` : `Buy item (${primaryDomain})`;
   }
   if (category === "travel") {
-    return topicText ? `Plan trip for ${topicText}` : `Travel planning on ${primaryDomain}`;
+    return normalizedTopic ? `Plan trip: ${normalizedTopic}` : "Plan a trip";
   }
   if (category === "research") {
-    return topicText ? `Research ${topicText}` : `Research on ${primaryDomain}`;
+    return normalizedTopic ? `Learn about ${normalizedTopic}` : "Read and learn";
   }
   if (category === "social") {
-    return topicText ? `Follow ${topicText} thread` : `Social thread on ${primaryDomain}`;
+    return normalizedTopic ? `Catch up on ${normalizedTopic}` : "Catch up on thread";
   }
-  return topicText ? `Task: ${topicText}` : `Task around ${primaryDomain}`;
+  if (category === "job") {
+    return normalizedTopic ? `Job search: ${normalizedTopic}` : "Job search task";
+  }
+  return normalizedTopic ? `Continue: ${normalizedTopic}` : "Continue browsing task";
 }
 
-function generateBriefing(task) {
-  const lead = task.confidence >= 0.8 ? "You were" : "It looks like you were";
-  const { readCount, skimmedCount, bouncedCount, unopenedCount } = task.stats;
-  const across = task.domains?.length ? ` across ${task.domains.slice(0, 3).join(", ")}` : "";
-  const topicText = task.topic ? ` ${task.topic}` : "";
+function resolveTaskStatus(override, nowTs) {
+  if (override?.status === "dropped") {
+    return "dropped";
+  }
+  if (override?.status === "done" || override?.done === true) {
+    return "done";
+  }
+  if (override?.status === "snoozed") {
+    const untilTs = toNum(override?.snoozedUntilTs, 0);
+    if (untilTs > nowTs) {
+      return "snoozed";
+    }
+  }
+  return "active";
+}
+
+function taskWorkflowState(task) {
+  if (task.status === "done") return "completed";
+  if (task.status === "dropped") return "dropped";
+  if (task.status === "snoozed") return "snoozed";
+
+  const { readCount, skimmedCount, unopenedCount, pageCount } = task.stats;
+  if (task.category === "shopping") {
+    if (pageCount <= 1) return "exploring options";
+    if (readCount === 0) return "comparing options";
+    if (unopenedCount > 0 || skimmedCount > 0) return "narrowing shortlist";
+    return "ready to decide";
+  }
+  if (task.category === "research") {
+    if (readCount === 0) return "scanning sources";
+    if (readCount < 2) return "deep reading";
+    return "synthesizing findings";
+  }
+  if (task.category === "travel") {
+    if (unopenedCount > 0) return "gathering options";
+    if (skimmedCount > 0) return "comparing itinerary";
+    return "ready to book";
+  }
+  if (task.category === "job") {
+    if (unopenedCount > 0) return "collecting roles";
+    if (skimmedCount > 0) return "screening roles";
+    return "ready to apply";
+  }
+  return "in progress";
+}
+
+function buildDecisionContext(task) {
+  const pages = Array.isArray(task.pages) ? task.pages : [];
+  const favored = pages[0] || null;
+  const taskTextParts = [
+    task.title,
+    task.topic,
+    ...task.urls,
+    ...pages.map((page) => `${page.title} ${page.url}`)
+  ];
+  const missing = [];
 
   if (task.category === "shopping") {
-    return `${lead} comparing ${task.stats.pageCount}${topicText} shopping pages${across}. You read ${readCount}, skimmed ${skimmedCount}, and left ${unopenedCount} unopened.`;
+    const hasReviews = hasTaskSignal(
+      taskTextParts,
+      /review|rating|customer\s*review|testimonials?/i
+    );
+    const hasPolicy = hasTaskSignal(taskTextParts, /return|refund|shipping|policy/i);
+    const hasPrice = hasTaskSignal(taskTextParts, /\$|price|deal|discount|sale|under\s+\d+/i);
+    if (!hasReviews) missing.push("No review check detected");
+    if (!hasPolicy) missing.push("No return/shipping policy check detected");
+    if (!hasPrice) missing.push("No clear price comparison detected");
+  } else if (task.category === "travel") {
+    const hasFlights = hasTaskSignal(taskTextParts, /flight|airline|google\s*flights|kayak|expedia/i);
+    const hasHotels = hasTaskSignal(taskTextParts, /hotel|airbnb|booking\.com|accommodation|stay/i);
+    if (!hasFlights) missing.push("Flights were not researched");
+    if (!hasHotels) missing.push("Hotels/stays were not researched");
+  } else if (task.category === "research") {
+    if (task.stats.readCount === 0) {
+      missing.push("No source was deeply read yet");
+    }
+    if ((task.domains || []).length < 2) {
+      missing.push("Low source diversity");
+    }
+  } else if (task.stats.unopenedCount > 0) {
+    missing.push(`${task.stats.unopenedCount} page(s) still unopened`);
   }
 
-  if (task.category === "research") {
-    return `${lead} researching across ${task.stats.pageCount}${topicText} pages${across}. You fully read ${readCount} and skimmed ${skimmedCount}.`;
+  if (!favored) {
+    return {
+      favoredLabel: "",
+      reasons: [],
+      missingSignals: missing
+    };
+  }
+
+  const reasons = [];
+  if (favored.activeMs > 0) reasons.push(`spent ${formatDurationMinutes(favored.activeMs)}`);
+  if (favored.revisitCount > 0) reasons.push(`revisited ${favored.revisitCount}x`);
+  if (favored.maxScrollPct >= 65) reasons.push(`scrolled ${Math.round(favored.maxScrollPct)}%`);
+  if (!reasons.length) reasons.push("opened repeatedly");
+
+  return {
+    favoredLabel: favored.title || favored.url,
+    reasons,
+    missingSignals: missing
+  };
+}
+
+function whyTimeline(componentPages) {
+  const steps = [];
+  const ordered = [...componentPages].sort((a, b) => a.firstTs - b.firstTs);
+  if (!ordered.length) {
+    return steps;
+  }
+
+  const searchPage = ordered.find((page) => {
+    const query = queryFromUrl(page.url);
+    if (query) {
+      return true;
+    }
+    try {
+      const parsed = new URL(page.url);
+      const domain = parsed.hostname.replace(/^www\./, "");
+      return SEARCH_DOMAINS.has(domain) || isSearchLikePath(parsed.pathname);
+    } catch {
+      return false;
+    }
+  });
+
+  if (searchPage) {
+    const query = queryFromUrl(searchPage.url);
+    if (query) {
+      steps.push(`Searched "${query}"`);
+    } else {
+      steps.push(`Started from ${searchPage.domain}`);
+    }
+  }
+
+  const opened = ordered.filter((page) => page.url !== searchPage?.url).slice(0, 2);
+  for (const page of opened) {
+    steps.push(`Opened ${page.titleLatest || page.url}`);
+  }
+
+  const revisited = [...ordered]
+    .filter((page) => page.revisitCount > 0)
+    .sort((a, b) => b.revisitCount - a.revisitCount || b.lastTs - a.lastTs)[0];
+  if (revisited) {
+    steps.push(`Revisited ${revisited.titleLatest || revisited.url} (${revisited.revisitCount}x)`);
+  }
+
+  return steps.slice(0, 4);
+}
+
+function buildResumePlan(task) {
+  const orderedPages = [...(task.pages || [])].sort((a, b) => {
+    const stateDelta = statePriority(a.state) - statePriority(b.state);
+    if (stateDelta !== 0) return stateDelta;
+    if (b.interestScore !== a.interestScore) return b.interestScore - a.interestScore;
+    return b.lastTs - a.lastTs;
+  });
+
+  const orderedUrls = orderedPages.map((page) => page.url).filter(Boolean);
+  const checklist = [];
+
+  if (task.category === "shopping") {
+    checklist.push("Open shortlist pages in ranked order");
+    checklist.push("Check reviews + return/shipping for top options");
+    checklist.push("Decide: mark done or set a reminder");
+  } else if (task.category === "travel") {
+    checklist.push("Review unfinished options first");
+    checklist.push("Cover missing side: flights and stays");
+    checklist.push("Set next milestone or mark done");
+  } else if (task.category === "research") {
+    checklist.push("Finish skimmed/unopened sources first");
+    checklist.push("Deep-read one source and capture key takeaway");
+    checklist.push("Decide whether to continue or close");
+  } else if (task.category === "job") {
+    checklist.push("Open unfinished job pages first");
+    checklist.push("Shortlist top roles and note requirements");
+    checklist.push("Apply or set reminder");
+  } else {
+    checklist.push("Open unfinished pages first");
+    checklist.push("Continue in ranked order");
+    checklist.push("Mark done or set a reminder");
+  }
+
+  return {
+    orderedUrls,
+    orderedPages: orderedPages.slice(0, 6).map((page) => ({
+      url: page.url,
+      title: page.title,
+      state: page.state
+    })),
+    checklist
+  };
+}
+
+function buildTaskAdapter(task, componentPages) {
+  if (task.category === "shopping") {
+    const optionPages = (task.pages || [])
+      .filter((page) => {
+        try {
+          const parsed = new URL(page.url);
+          const domain = parsed.hostname.replace(/^www\./, "");
+          return !SEARCH_DOMAINS.has(domain) && !isSearchLikePath(parsed.pathname);
+        } catch {
+          return true;
+        }
+      })
+      .slice(0, 4)
+      .map((page) => ({
+        title: page.title,
+        domain: page.domain,
+        state: page.state,
+        interestScore: page.interestScore
+      }));
+
+    const text = [
+      task.title,
+      task.topic,
+      ...task.urls,
+      ...(task.pages || []).map((page) => `${page.title} ${page.url}`)
+    ].join(" ");
+
+    return {
+      type: "shopping",
+      options: optionPages,
+      checks: {
+        reviews: /review|rating|customer\s*review|testimonials?/i.test(text),
+        returnPolicy: /return|refund|shipping|policy/i.test(text),
+        price: /\$|price|deal|discount|sale|under\s+\d+/i.test(text)
+      }
+    };
   }
 
   if (task.category === "travel") {
-    return `${lead} planning travel across ${task.stats.pageCount}${topicText} pages${across}. ${skimmedCount + unopenedCount} pages still look unfinished.`;
+    const text = [
+      task.title,
+      task.topic,
+      ...task.urls,
+      ...(task.pages || []).map((page) => `${page.title} ${page.url}`)
+    ].join(" ");
+    return {
+      type: "travel",
+      checks: {
+        flights: /flight|airline|google\s*flights|kayak|expedia/i.test(text),
+        hotels: /hotel|airbnb|booking\.com|accommodation|stay/i.test(text),
+        itinerary: /itinerary|schedule|day\s+\d+/i.test(text)
+      }
+    };
   }
 
-  return `${lead} working across ${task.stats.pageCount}${topicText} related pages${across}. ${bouncedCount + unopenedCount} pages appear not fully reviewed.`;
+  if (task.category === "research") {
+    const sources = [...new Set(componentPages.map((page) => page.domain))];
+    return {
+      type: "research",
+      sourceCount: sources.length,
+      deepReadCount: task.stats.readCount
+    };
+  }
+
+  if (task.category === "job") {
+    const text = [
+      task.title,
+      task.topic,
+      ...task.urls,
+      ...(task.pages || []).map((page) => `${page.title} ${page.url}`)
+    ].join(" ");
+    return {
+      type: "job",
+      checks: {
+        roleRequirements: /requirements|qualification|experience|responsibilit/i.test(text),
+        compensation: /salary|compensation|pay|benefits/i.test(text),
+        application: /apply|application|submit/i.test(text)
+      }
+    };
+  }
+
+  return { type: "generic" };
+}
+
+function detectDeadEnd(task) {
+  const loopRevisits = (task.pages || [])
+    .filter((page) => page.revisitCount >= 2 && page.completionScore < 45)
+    .reduce((sum, page) => sum + page.revisitCount, 0);
+  const repetitiveSearchPages = (task.pages || []).filter((page) => {
+    try {
+      const parsed = new URL(page.url);
+      const domain = parsed.hostname.replace(/^www\./, "");
+      return (
+        (SEARCH_DOMAINS.has(domain) || isSearchLikePath(parsed.pathname)) &&
+        page.revisitCount >= 2 &&
+        page.completionScore < 40
+      );
+    } catch {
+      return false;
+    }
+  }).length;
+
+  const detected =
+    loopRevisits >= 5 || (repetitiveSearchPages >= 2 && task.stats.readCount === 0);
+  if (!detected) {
+    return { detected: false, message: "", resetPlan: [] };
+  }
+
+  return {
+    detected: true,
+    message: "You appear to be looping through similar pages without reaching a decision.",
+    resetPlan: [
+      "Pick top 2 pages only",
+      "Check one missing signal",
+      "Decide: mark done or set a reminder"
+    ]
+  };
+}
+
+function generateBriefing(task) {
+  const decision = task.decisionContext || { favoredLabel: "", reasons: [], missingSignals: [] };
+  const favored = decision.favoredLabel ? `"${decision.favoredLabel}"` : "one page";
+  const reasonText = decision.reasons.length ? decision.reasons.join(", ") : "engagement signals";
+  const missing = decision.missingSignals[0] ? ` Missing signal: ${decision.missingSignals[0]}.` : "";
+
+  if (task.category === "shopping") {
+    return `You favored ${favored} because you ${reasonText}.${missing}`;
+  }
+  if (task.category === "research") {
+    return `You focused most on ${favored} based on ${reasonText}.${missing}`;
+  }
+  if (task.category === "travel") {
+    return `You concentrated on ${favored} while planning. ${missing || "You still have unfinished planning pages."}`;
+  }
+  if (task.category === "job") {
+    return `You spent most effort on ${favored} (${reasonText}).${missing}`;
+  }
+  return `You were working across related pages and favored ${favored} (${reasonText}).${missing}`;
 }
 
 function generateNextAction(task) {
-  if (task.stats.unopenedCount > 0) {
-    return "Open the unopened pages first, then continue in ranked order.";
+  if (task.deadEnd?.detected) {
+    return "You are in a loop. Limit to top 2 pages, check one missing signal, then close or set a reminder.";
   }
-  if (task.stats.skimmedCount > 0) {
-    return "Finish the skimmed pages to close this task.";
+  if (task.resumePlan?.checklist?.length) {
+    return task.resumePlan.checklist[0];
   }
-  if (task.category === "shopping") {
-    return "Double-check reviews and return policy before deciding.";
+  return "Open unfinished pages, continue in order, then close the task.";
+}
+
+function tokensForTask(task) {
+  const tokens = new Set();
+  const textChunks = [
+    task.title,
+    task.topic,
+    ...(task.pages || []).map((page) => `${page.title || ""} ${page.url || ""}`)
+  ];
+  for (const chunk of textChunks) {
+    for (const token of tokenize(chunk)) {
+      if (token.length < 3 || TOPIC_STOPWORDS.has(token)) {
+        continue;
+      }
+      tokens.add(token);
+    }
   }
-  return "Mark this task done if you are finished.";
+  return tokens;
+}
+
+function relatedOverlapScore(taskA, taskB, tokenSetA, tokenSetB) {
+  const domainsA = new Set([taskA.domain, ...(taskA.domains || [])].filter(Boolean));
+  const domainsB = new Set([taskB.domain, ...(taskB.domains || [])].filter(Boolean));
+  let sharedDomains = 0;
+  for (const domain of domainsA) {
+    if (domainsB.has(domain)) {
+      sharedDomains += 1;
+    }
+  }
+
+  const overlap = overlapRatio([...tokenSetA], [...tokenSetB]);
+  let sharedTokens = 0;
+  for (const token of tokenSetA) {
+    if (tokenSetB.has(token)) {
+      sharedTokens += 1;
+    }
+  }
+
+  return {
+    score:
+      overlap +
+      (sharedDomains > 0 ? 0.22 : 0) +
+      (sharedTokens >= 2 ? 0.15 : 0) +
+      (taskA.category === taskB.category ? 0.08 : 0),
+    sharedDomains,
+    sharedTokens
+  };
+}
+
+function annotateRelatedTasks(tasks) {
+  const tokenSets = new Map(tasks.map((task) => [task.taskId, tokensForTask(task)]));
+
+  for (const task of tasks) {
+    const related = [];
+    const taskTokens = tokenSets.get(task.taskId) || new Set();
+
+    for (const candidate of tasks) {
+      if (candidate.taskId === task.taskId) {
+        continue;
+      }
+      const candidateTokens = tokenSets.get(candidate.taskId) || new Set();
+      const recencyGapMs = toNum(task.lastActivityTs, 0) - toNum(candidate.lastActivityTs, 0);
+      if (recencyGapMs < 30 * 60 * 1000) {
+        continue;
+      }
+
+      const relation = relatedOverlapScore(task, candidate, taskTokens, candidateTokens);
+      if (relation.score < 0.34) {
+        continue;
+      }
+
+      related.push({
+        taskId: candidate.taskId,
+        title: candidate.title,
+        domain: candidate.domain,
+        category: candidate.category,
+        lastActivityTs: candidate.lastActivityTs,
+        overlapScore: Number(relation.score.toFixed(2)),
+        reason:
+          relation.sharedDomains > 0
+            ? "shared domain + intent overlap"
+            : relation.sharedTokens >= 2
+              ? "shared intent keywords"
+              : "similar browsing thread"
+      });
+    }
+
+    related.sort((a, b) => {
+      if (b.overlapScore !== a.overlapScore) {
+        return b.overlapScore - a.overlapScore;
+      }
+      return b.lastActivityTs - a.lastActivityTs;
+    });
+    task.relatedTasks = related.slice(0, 2);
+  }
+
+  return tasks;
 }
 
 function componentConfidence(componentPages, edgeScores) {
@@ -885,12 +1498,16 @@ function buildComponents(pages) {
   return { components, componentEdgeScores };
 }
 
-function buildTaskFromComponent(componentPages, edgeScores, taskOverrides) {
+function buildTaskFromComponent(componentPages, edgeScores, taskOverrides, nowTs) {
   const maxActiveMsInTask = Math.max(...componentPages.map((page) => page.activeMs), 1);
   const pages = componentPages.map((page) => {
     const completionScore = computeCompletionScore(page);
     const interestScore = computeInterestScore(page, maxActiveMsInTask);
     const state = classifyPageState(page, completionScore);
+    const readingProgressPct = Number(
+      clamp(Math.max(completionScore, page.maxScrollPct * 0.85), 0, 100).toFixed(1)
+    );
+    const remainingReadMs = estimateRemainingReadMs(page, completionScore);
 
     return {
       url: page.url,
@@ -899,6 +1516,9 @@ function buildTaskFromComponent(componentPages, edgeScores, taskOverrides) {
       state,
       interestScore,
       completionScore,
+      readingProgressPct,
+      remainingReadMs,
+      remainingReadMin: Math.max(0, Math.round(remainingReadMs / 60_000)),
       maxScrollPct: Number(page.maxScrollPct.toFixed(1)),
       activeMs: page.activeMs,
       visitCount: page.visitCount,
@@ -942,6 +1562,14 @@ function buildTaskFromComponent(componentPages, edgeScores, taskOverrides) {
     bouncedCount: pages.filter((page) => page.state === "bounced").length,
     unopenedCount: pages.filter((page) => page.state === "unopened").length
   };
+  const avgReadingProgressPct = pages.length
+    ? Number(
+      (pages.reduce((sum, page) => sum + toNum(page.readingProgressPct, 0), 0) / pages.length).toFixed(1)
+    )
+    : 0;
+  const estimatedRemainingReadMs = pages.reduce((sum, page) => sum + toNum(page.remainingReadMs, 0), 0);
+
+  const status = resolveTaskStatus(override, nowTs);
 
   const task = {
     taskId: stableId,
@@ -951,14 +1579,24 @@ function buildTaskFromComponent(componentPages, edgeScores, taskOverrides) {
     category,
     topic,
     confidence,
-    status: override.done ? "done" : "active",
+    status,
+    snoozedUntilTs: toNum(override.snoozedUntilTs, 0),
     lastActivityTs: Math.max(...componentPages.map((page) => page.lastTs)),
     urls,
     pages,
     stats,
+    avgReadingProgressPct,
+    estimatedRemainingReadMs,
+    estimatedRemainingReadMin: Math.max(0, Math.round(estimatedRemainingReadMs / 60_000)),
     createdBy: "graph-clustering-v1"
   };
 
+  task.workflowState = taskWorkflowState(task);
+  task.timeline = whyTimeline(componentPages);
+  task.decisionContext = buildDecisionContext(task);
+  task.resumePlan = buildResumePlan(task);
+  task.deadEnd = detectDeadEnd(task);
+  task.adapter = buildTaskAdapter(task, componentPages);
   task.briefing = generateBriefing(task);
   task.nextAction = generateNextAction(task);
   return task;
@@ -1013,6 +1651,7 @@ export function buildTaskFeedFromEvents(events, options = {}) {
   const taskOverrides = options.taskOverrides || {};
   const includeDone = Boolean(options.includeDone);
   const limit = Math.max(1, toNum(options.limit, 50));
+  const nowTs = toNum(options.nowTs, Date.now());
 
   const pages = aggregatePages(events);
   if (!pages.length) {
@@ -1025,16 +1664,18 @@ export function buildTaskFeedFromEvents(events, options = {}) {
     splitOutliersInComponent(indexes, pages)
   );
 
-  const tasks = refinedComponents
+  const allTasks = refinedComponents
     .map((indexes) => {
       const componentPages = indexes.map((index) => pages[index]);
       const edgeScores = componentEdgeScores
         .filter((edge) => indexes.includes(edge.i) && indexes.includes(edge.j))
         .map((edge) => edge.score);
 
-      return buildTaskFromComponent(componentPages, edgeScores, taskOverrides);
-    })
-    .filter((task) => includeDone || task.status !== "done");
+      return buildTaskFromComponent(componentPages, edgeScores, taskOverrides, nowTs);
+    });
+
+  const annotatedTasks = annotateRelatedTasks(allTasks);
+  const tasks = annotatedTasks.filter((task) => includeDone || task.status === "active");
 
   tasks.sort((a, b) => {
     const aScore =
@@ -1058,4 +1699,222 @@ export function buildTaskFeedFromEvents(events, options = {}) {
   });
 
   return tasks.slice(0, limit);
+}
+
+function dayKeyLocal(ts) {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDurationHuman(ms) {
+  const totalMin = Math.max(0, Math.round(toNum(ms, 0) / 60_000));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+function queryForSearch(url) {
+  try {
+    const parsed = new URL(url);
+    for (const key of SEARCH_QUERY_KEYS) {
+      const value = String(parsed.searchParams.get(key) || "").trim();
+      if (value) {
+        return value.toLowerCase().replace(/\+/g, " ").replace(/\s+/g, " ").trim();
+      }
+    }
+  } catch {
+    // Ignore invalid URLs.
+  }
+  return "";
+}
+
+function topCategories(byCategoryMs, totalActiveMs, limit = 4) {
+  const entries = Object.entries(byCategoryMs || {})
+    .filter(([, ms]) => ms > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([category, ms]) => ({
+      category,
+      activeMs: ms,
+      pct: totalActiveMs > 0 ? Number(((ms / totalActiveMs) * 100).toFixed(1)) : 0
+    }));
+  return entries;
+}
+
+function summarizeDaySemantically(day) {
+  const top = topCategories(day.byCategoryMs, day.totalActiveMs, 3);
+  if (!top.length) {
+    return "No meaningful activity captured this day.";
+  }
+
+  const categoryText = top
+    .map((item) => `${item.category} (${Math.round(item.pct)}%)`)
+    .join(", ");
+  return `You spent ${formatDurationHuman(day.totalActiveMs)} mostly on ${categoryText}.`;
+}
+
+function evaluateTimeSinks(day) {
+  const sinks = [];
+  const total = Math.max(1, day.totalActiveMs);
+  const socialMs = toNum(day.byCategoryMs.social, 0);
+  const otherMs = toNum(day.byCategoryMs.other, 0);
+  const bouncedMs = toNum(day.bouncedMs, 0);
+
+  if (socialMs / total >= 0.3) {
+    sinks.push({
+      label: "High social-feed time",
+      detail: `${formatDurationHuman(socialMs)} spent on social pages.`,
+      activeMs: socialMs
+    });
+  }
+
+  if (bouncedMs / total >= 0.25 || day.bouncedPageCount >= 6) {
+    sinks.push({
+      label: "Frequent quick-close browsing",
+      detail: `${day.bouncedPageCount} pages were closed quickly (${formatDurationHuman(bouncedMs)}).`,
+      activeMs: bouncedMs
+    });
+  }
+
+  if (day.searchLoopCount >= 3) {
+    sinks.push({
+      label: "Repeated search loops",
+      detail: `${day.searchLoopCount} search pages were revisited without deep completion.`,
+      activeMs: 0
+    });
+  }
+
+  if (otherMs / total >= 0.4) {
+    sinks.push({
+      label: "Unclear-intent browsing",
+      detail: `${formatDurationHuman(otherMs)} was in mixed/unclear browsing.`,
+      activeMs: otherMs
+    });
+  }
+
+  return sinks.slice(0, 4);
+}
+
+function buildCoachingLine(day, sinks) {
+  if (!sinks.length) {
+    return "Focus looked healthy. Keep closing tasks with Mark Done or Remind.";
+  }
+
+  const first = sinks[0]?.label || "";
+  if (first.includes("search")) {
+    return "Try a two-tab rule: pick top 2 options, then decide instead of re-searching.";
+  }
+  if (first.includes("quick-close")) {
+    return "Open fewer tabs at once and finish one branch before opening a new one.";
+  }
+  if (first.includes("social")) {
+    return "Set a short social timer before switching back to active tasks.";
+  }
+  return "Use Guided Resume to finish one open loop before starting a new thread.";
+}
+
+export function buildDailySemanticsFromEvents(events, options = {}) {
+  const days = Math.max(1, Math.min(30, toNum(options.days, 7)));
+  const nowTs = toNum(options.nowTs, Date.now());
+  const cutoffTs = nowTs - days * 24 * 60 * 60 * 1000;
+  const relevant = (events || []).filter((event) => toNum(event.ts, 0) >= cutoffTs);
+  const dayBuckets = new Map();
+
+  for (const event of relevant) {
+    const ts = toNum(event.ts, 0);
+    const key = dayKeyLocal(ts);
+    let bucket = dayBuckets.get(key);
+    if (!bucket) {
+      bucket = {
+        day: key,
+        totalActiveMs: 0,
+        byCategoryMs: {
+          shopping: 0,
+          research: 0,
+          travel: 0,
+          social: 0,
+          job: 0,
+          other: 0
+        },
+        events: [],
+        searchQueries: new Map(),
+        bouncedPageCount: 0,
+        bouncedMs: 0,
+        searchLoopCount: 0,
+        topTasks: []
+      };
+      dayBuckets.set(key, bucket);
+    }
+
+    bucket.events.push(event);
+
+    if (event.event_type === "engagement_snapshot") {
+      const activeMs = Math.max(0, toNum(event.payload?.activeMsSinceLast, 0));
+      const category = classifyTaskCategory(`${event.title || ""} ${event.url || ""}`);
+      bucket.totalActiveMs += activeMs;
+      if (bucket.byCategoryMs[category] === undefined) {
+        bucket.byCategoryMs.other += activeMs;
+      } else {
+        bucket.byCategoryMs[category] += activeMs;
+      }
+    }
+
+    if (event.url) {
+      const query = queryForSearch(event.url);
+      if (query) {
+        bucket.searchQueries.set(query, (bucket.searchQueries.get(query) || 0) + 1);
+      }
+    }
+  }
+
+  const summaries = [];
+  for (const bucket of dayBuckets.values()) {
+    const pages = aggregatePages(bucket.events);
+    const maxActiveMsInDay = Math.max(...pages.map((page) => page.activeMs), 1);
+
+    for (const page of pages) {
+      const completion = computeCompletionScore(page);
+      const state = classifyPageState(page, completion);
+      if (state === "bounced") {
+        bucket.bouncedPageCount += 1;
+        bucket.bouncedMs += page.activeMs;
+      }
+      if (page.isSearchLike && page.revisitCount >= 2 && completion < 40) {
+        bucket.searchLoopCount += 1;
+      }
+      computeInterestScore(page, maxActiveMsInDay);
+    }
+
+    const dayTasks = buildTaskFeedFromEvents(bucket.events, {
+      limit: 5,
+      includeDone: true,
+      nowTs
+    });
+    bucket.topTasks = dayTasks.slice(0, 3).map((task) => task.title);
+
+    const sinks = evaluateTimeSinks(bucket);
+    summaries.push({
+      day: bucket.day,
+      totalActiveMs: bucket.totalActiveMs,
+      byCategoryMs: bucket.byCategoryMs,
+      topCategories: topCategories(bucket.byCategoryMs, bucket.totalActiveMs, 5),
+      semanticSummary: summarizeDaySemantically(bucket),
+      likelyTimeSinks: sinks,
+      coaching: buildCoachingLine(bucket, sinks),
+      topTasks: bucket.topTasks,
+      stats: {
+        bouncedPageCount: bucket.bouncedPageCount,
+        searchLoopCount: bucket.searchLoopCount,
+        searchQueryCount: bucket.searchQueries.size
+      }
+    });
+  }
+
+  summaries.sort((a, b) => b.day.localeCompare(a.day));
+  return summaries.slice(0, days);
 }

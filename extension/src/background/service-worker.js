@@ -3,29 +3,43 @@ import {
   clearAllEvents,
   deleteEventsByUrls,
   getRecentEvents,
+  purgeDeletedEventsBefore,
   pruneEventsBefore
 } from "./storage.js";
-import { buildTaskFeedFromEvents, canonicalizeUrl, safeDomain } from "./inference.js";
 import {
-  applyNudgeSends,
-  buildNudgeNotification,
+  buildDailySemanticsFromEvents,
+  buildTaskFeedFromEvents,
+  canonicalizeUrl,
+  safeDomain
+} from "./inference.js";
+import {
   computeOpenLoopScore,
   deriveNudgePhase,
-  normalizeNudgeSettings,
-  selectNudgeCandidates
+  normalizeNudgeSettings
 } from "./nudges.js";
 import { DEFAULTS, MESSAGE_TYPES, STORAGE_KEYS } from "../shared/constants.js";
 
 const ALARM_RETENTION_CLEANUP = "retention-cleanup";
-const ALARM_NUDGE_EVALUATION = "nudge-evaluation";
 const ALARM_SYNC_EVALUATION = "sync-evaluation";
-const NUDGE_NOTIFICATION_PREFIX = "context-nudge";
 const REALTIME_SYNC_COOLDOWN_MS = 20 * 1000;
+const RESUME_SCROLL_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
+const RESUME_SCROLL_MAX_ATTEMPTS = 8;
+const DELETED_EVENT_GRACE_MS = 24 * 60 * 60 * 1000;
 
 let lastRealtimeSyncTs = 0;
+const pendingScrollRestoreByTabId = new Map();
 
 function nowMs() {
   return Date.now();
+}
+
+function toNum(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function sleep(ms) {
@@ -60,10 +74,6 @@ function defaultNudgeState(currentTs = nowMs()) {
   };
 }
 
-function notificationId(taskId, phase, ts = nowMs()) {
-  return `${NUDGE_NOTIFICATION_PREFIX}:${phase}:${taskId}:${ts}`;
-}
-
 function isTrackableWebUrl(url) {
   if (!url) {
     return false;
@@ -77,19 +87,26 @@ function isTrackableWebUrl(url) {
   }
 }
 
-function parseNotificationId(id) {
-  if (!id || !id.startsWith(`${NUDGE_NOTIFICATION_PREFIX}:`)) {
-    return null;
+function normalizeTaskLifecycleStatus(input) {
+  const status = String(input || "").trim().toLowerCase();
+  if (status === "done" || status === "dropped" || status === "snoozed") {
+    return status;
   }
-  const parts = id.split(":");
-  if (parts.length < 4) {
-    return null;
+  return "active";
+}
+
+function upcomingFridayAt(hour = 9, minute = 0, fromTs = nowMs()) {
+  const date = new Date(fromTs);
+  const day = date.getDay(); // 0=Sun ... 5=Fri
+  const target = 5;
+  let delta = target - day;
+  if (delta <= 0) {
+    delta += 7;
   }
-  return {
-    phase: parts[1],
-    taskId: parts.slice(2, parts.length - 1).join(":"),
-    sentAt: Number(parts[parts.length - 1])
-  };
+  const out = new Date(date);
+  out.setDate(date.getDate() + delta);
+  out.setHours(hour, minute, 0, 0);
+  return out.getTime();
 }
 
 async function getTaskOverrides() {
@@ -99,6 +116,622 @@ async function getTaskOverrides() {
 
 async function setTaskOverrides(overrides) {
   await chrome.storage.local.set({ [STORAGE_KEYS.TASK_OVERRIDES]: overrides });
+}
+
+function defaultTaskRelations() {
+  return {
+    mergedIntoByTaskId: {},
+    keepSeparatePairs: {},
+    mergeRules: [],
+    keepSeparateRules: []
+  };
+}
+
+function relationTokens(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/https?:\/\//g, " ")
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3);
+}
+
+function normalizeTaskRelationSnapshot(raw, fallbackTaskId = "") {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const snapshotTaskId = String(raw.taskId || fallbackTaskId || "").trim();
+  const domain = String(raw.domain || "").trim().toLowerCase();
+  const domains = [...new Set((Array.isArray(raw.domains) ? raw.domains : [])
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean))]
+    .slice(0, 8);
+
+  const urls = [...new Set((Array.isArray(raw.urls) ? raw.urls : [])
+    .map((value) => canonicalizeUrl(String(value || "").trim()))
+    .filter((url) => isTrackableWebUrl(url)))]
+    .slice(0, 12);
+
+  const tokenInput = Array.isArray(raw.tokens) ? raw.tokens : relationTokens([
+    raw.title,
+    raw.topic,
+    ...urls
+  ].join(" "));
+  const tokens = [...new Set(tokenInput.map((token) => String(token || "").trim().toLowerCase()).filter(Boolean))]
+    .slice(0, 14);
+
+  if (!snapshotTaskId && !domain && !domains.length && !urls.length && !tokens.length) {
+    return null;
+  }
+
+  return {
+    taskId: snapshotTaskId,
+    title: String(raw.title || "").trim().slice(0, 160),
+    topic: String(raw.topic || "").trim().slice(0, 160),
+    domain,
+    domains,
+    urls,
+    tokens
+  };
+}
+
+function normalizeTaskRelationRule(raw) {
+  const safe = raw && typeof raw === "object" ? raw : {};
+  const primaryTaskId = String(safe.primaryTaskId || "").trim();
+  const secondaryTaskId = String(safe.secondaryTaskId || "").trim();
+  const primarySnapshot = normalizeTaskRelationSnapshot(safe.primarySnapshot, primaryTaskId);
+  const secondarySnapshot = normalizeTaskRelationSnapshot(safe.secondarySnapshot, secondaryTaskId);
+  const createdAt = Math.max(0, toNum(safe.createdAt, 0));
+  const ruleType = String(safe.ruleType || "").trim();
+
+  if (!primaryTaskId && !secondaryTaskId && !primarySnapshot && !secondarySnapshot) {
+    return null;
+  }
+
+  return {
+    primaryTaskId,
+    secondaryTaskId,
+    primarySnapshot,
+    secondarySnapshot,
+    createdAt,
+    ruleType
+  };
+}
+
+function appendTaskRelationRule(rules, nextRule, maxItems = 300) {
+  const normalizedRule = normalizeTaskRelationRule(nextRule);
+  if (!normalizedRule) {
+    return rules || [];
+  }
+
+  const existing = Array.isArray(rules) ? [...rules] : [];
+  const dedupeKey = [
+    normalizedRule.ruleType,
+    normalizedRule.primaryTaskId || normalizedRule.primarySnapshot?.taskId || "",
+    normalizedRule.secondaryTaskId || normalizedRule.secondarySnapshot?.taskId || "",
+    (normalizedRule.primarySnapshot?.tokens || []).slice(0, 3).join(","),
+    (normalizedRule.secondarySnapshot?.tokens || []).slice(0, 3).join(",")
+  ].join("|");
+
+  const seen = new Set();
+  const output = [normalizedRule, ...existing]
+    .map((rule) => normalizeTaskRelationRule(rule))
+    .filter(Boolean)
+    .filter((rule) => {
+      const key = [
+        String(rule.ruleType || "").trim(),
+        String(rule.primaryTaskId || rule.primarySnapshot?.taskId || "").trim(),
+        String(rule.secondaryTaskId || rule.secondarySnapshot?.taskId || "").trim(),
+        (rule.primarySnapshot?.tokens || []).slice(0, 3).join(","),
+        (rule.secondarySnapshot?.tokens || []).slice(0, 3).join(",")
+      ].join("|");
+      if (key === dedupeKey && seen.has(key)) {
+        return false;
+      }
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+
+  return output.slice(0, maxItems);
+}
+
+function normalizeTaskRelations(raw) {
+  const safe = raw && typeof raw === "object" ? raw : {};
+  const mergedIntoByTaskId = safe.mergedIntoByTaskId && typeof safe.mergedIntoByTaskId === "object"
+    ? { ...safe.mergedIntoByTaskId }
+    : {};
+  const keepSeparatePairs = safe.keepSeparatePairs && typeof safe.keepSeparatePairs === "object"
+    ? { ...safe.keepSeparatePairs }
+    : {};
+  const mergeRules = Array.isArray(safe.mergeRules)
+    ? safe.mergeRules.map((rule) => normalizeTaskRelationRule(rule)).filter(Boolean)
+    : [];
+  const keepSeparateRules = Array.isArray(safe.keepSeparateRules)
+    ? safe.keepSeparateRules.map((rule) => normalizeTaskRelationRule(rule)).filter(Boolean)
+    : [];
+
+  return {
+    mergedIntoByTaskId,
+    keepSeparatePairs,
+    mergeRules,
+    keepSeparateRules
+  };
+}
+
+function taskPairKey(a, b) {
+  return [String(a || "").trim(), String(b || "").trim()].sort().join("::");
+}
+
+function relationOverlapRatio(listA, listB) {
+  if (!listA.length || !listB.length) {
+    return 0;
+  }
+  const setA = new Set(listA);
+  const setB = new Set(listB);
+  let common = 0;
+  for (const value of setA) {
+    if (setB.has(value)) {
+      common += 1;
+    }
+  }
+  return common / Math.max(setA.size, setB.size);
+}
+
+function taskRelationSnapshotFromTask(task) {
+  if (!task || typeof task !== "object") {
+    return null;
+  }
+
+  const urls = [...new Set(
+    [
+      ...(Array.isArray(task.urls) ? task.urls : []),
+      ...((task.pages || []).map((page) => page.url))
+    ]
+      .map((url) => canonicalizeUrl(String(url || "")))
+      .filter((url) => isTrackableWebUrl(url))
+  )].slice(0, 12);
+
+  const tokens = [...new Set(
+    relationTokens([
+      task.title,
+      task.topic,
+      ...urls
+    ].join(" "))
+  )].slice(0, 14);
+
+  return {
+    taskId: String(task.taskId || "").trim(),
+    title: String(task.title || ""),
+    topic: String(task.topic || ""),
+    domain: String(task.domain || "").trim().toLowerCase(),
+    domains: [...new Set((task.domains || []).map((domain) => String(domain || "").trim().toLowerCase()).filter(Boolean))],
+    urls,
+    tokens
+  };
+}
+
+function taskMatchScore(snapshot, task) {
+  const safeSnapshot = normalizeTaskRelationSnapshot(snapshot);
+  const taskSnapshot = taskRelationSnapshotFromTask(task);
+  if (!safeSnapshot || !taskSnapshot) {
+    return 0;
+  }
+
+  const domainA = new Set([safeSnapshot.domain, ...(safeSnapshot.domains || [])].filter(Boolean));
+  const domainB = new Set([taskSnapshot.domain, ...(taskSnapshot.domains || [])].filter(Boolean));
+  let sharedDomains = 0;
+  for (const domain of domainA) {
+    if (domainB.has(domain)) {
+      sharedDomains += 1;
+    }
+  }
+
+  const urlOverlap = relationOverlapRatio(safeSnapshot.urls || [], taskSnapshot.urls || []);
+  const tokenOverlap = relationOverlapRatio(safeSnapshot.tokens || [], taskSnapshot.tokens || []);
+  return urlOverlap + tokenOverlap + (sharedDomains > 0 ? 0.3 : 0);
+}
+
+function findTaskIdForSnapshot(snapshot, tasks, usedTaskIds = new Set()) {
+  const safeSnapshot = normalizeTaskRelationSnapshot(snapshot);
+  if (!safeSnapshot) {
+    return "";
+  }
+
+  if (safeSnapshot.taskId) {
+    const exact = tasks.find((task) => task.taskId === safeSnapshot.taskId && !usedTaskIds.has(task.taskId));
+    if (exact) {
+      return exact.taskId;
+    }
+  }
+
+  let bestTaskId = "";
+  let bestScore = 0;
+  for (const task of tasks) {
+    if (usedTaskIds.has(task.taskId)) {
+      continue;
+    }
+    const score = taskMatchScore(safeSnapshot, task);
+    if (score > bestScore) {
+      bestScore = score;
+      bestTaskId = task.taskId;
+    }
+  }
+
+  return bestScore >= 0.4 ? bestTaskId : "";
+}
+
+function resolveRelationMapsForTasks(tasks, relations) {
+  const normalized = normalizeTaskRelations(relations);
+  const mergedIntoByTaskId = { ...(normalized.mergedIntoByTaskId || {}) };
+  const keepSeparatePairs = { ...(normalized.keepSeparatePairs || {}) };
+
+  for (const rule of normalized.mergeRules || []) {
+    const used = new Set();
+    const primaryTaskId =
+      findTaskIdForSnapshot(rule.primarySnapshot || { taskId: rule.primaryTaskId }, tasks, used) ||
+      String(rule.primaryTaskId || "").trim();
+    if (primaryTaskId) {
+      used.add(primaryTaskId);
+    }
+    const secondaryTaskId =
+      findTaskIdForSnapshot(rule.secondarySnapshot || { taskId: rule.secondaryTaskId }, tasks, used) ||
+      String(rule.secondaryTaskId || "").trim();
+    if (!primaryTaskId || !secondaryTaskId || primaryTaskId === secondaryTaskId) {
+      continue;
+    }
+    mergedIntoByTaskId[secondaryTaskId] = primaryTaskId;
+    delete keepSeparatePairs[taskPairKey(primaryTaskId, secondaryTaskId)];
+  }
+
+  for (const rule of normalized.keepSeparateRules || []) {
+    const used = new Set();
+    const primaryTaskId =
+      findTaskIdForSnapshot(rule.primarySnapshot || { taskId: rule.primaryTaskId }, tasks, used) ||
+      String(rule.primaryTaskId || "").trim();
+    if (primaryTaskId) {
+      used.add(primaryTaskId);
+    }
+    const secondaryTaskId =
+      findTaskIdForSnapshot(rule.secondarySnapshot || { taskId: rule.secondaryTaskId }, tasks, used) ||
+      String(rule.secondaryTaskId || "").trim();
+    if (!primaryTaskId || !secondaryTaskId || primaryTaskId === secondaryTaskId) {
+      continue;
+    }
+    keepSeparatePairs[taskPairKey(primaryTaskId, secondaryTaskId)] = Number(rule.createdAt || nowMs());
+  }
+
+  return { mergedIntoByTaskId, keepSeparatePairs };
+}
+
+function dedupePagesForSync(pages) {
+  const byUrl = new Map();
+  for (const page of pages || []) {
+    const url = String(page?.url || "").trim();
+    if (!url) {
+      continue;
+    }
+    const key = canonicalizeUrl(url) || url;
+    const existing = byUrl.get(key);
+    if (!existing) {
+      byUrl.set(key, { ...page, url: key });
+      continue;
+    }
+    const existingScore = toNum(existing.interestScore, 0) + toNum(existing.completionScore, 0);
+    const nextScore = toNum(page.interestScore, 0) + toNum(page.completionScore, 0);
+    if (nextScore >= existingScore) {
+      byUrl.set(key, { ...page, url: key });
+    }
+  }
+  return [...byUrl.values()];
+}
+
+function rebuildStatsFromPages(pages, baseStats = {}, extraEventCount = 0) {
+  const counts = {
+    readCount: 0,
+    skimmedCount: 0,
+    unopenedCount: 0,
+    bouncedCount: 0
+  };
+  let activeMs = 0;
+  let revisitCount = 0;
+  let deepScrollCount = 0;
+
+  for (const page of pages) {
+    const state = String(page.state || "skimmed");
+    if (state === "read") counts.readCount += 1;
+    else if (state === "skimmed") counts.skimmedCount += 1;
+    else if (state === "unopened") counts.unopenedCount += 1;
+    else counts.bouncedCount += 1;
+    activeMs += toNum(page.activeMs, 0);
+    revisitCount += toNum(page.revisitCount, 0);
+    if (toNum(page.maxScrollPct, 0) >= 80) {
+      deepScrollCount += 1;
+    }
+  }
+
+  return {
+    ...baseStats,
+    pageCount: pages.length,
+    activeMs,
+    readCount: counts.readCount,
+    skimmedCount: counts.skimmedCount,
+    unopenedCount: counts.unopenedCount,
+    bouncedCount: counts.bouncedCount,
+    revisitCount,
+    deepScrollCount,
+    eventCount: toNum(baseStats.eventCount, 0) + toNum(extraEventCount, 0)
+  };
+}
+
+function mergeTaskRecordsForSync(primary, secondary) {
+  const pages = dedupePagesForSync([...(primary.pages || []), ...(secondary.pages || [])]).sort((a, b) => {
+    const interestDelta = toNum(b.interestScore, 0) - toNum(a.interestScore, 0);
+    if (interestDelta !== 0) {
+      return interestDelta;
+    }
+    return toNum(b.lastTs, 0) - toNum(a.lastTs, 0);
+  });
+  const domains = [...new Set([primary.domain, secondary.domain, ...(primary.domains || []), ...(secondary.domains || [])].filter(Boolean))];
+
+  return {
+    ...primary,
+    domains,
+    pages,
+    urls: pages.map((page) => page.url).filter(Boolean),
+    stats: rebuildStatsFromPages(pages, primary.stats || {}, toNum(secondary.stats?.eventCount, 0)),
+    lastActivityTs: Math.max(toNum(primary.lastActivityTs, 0), toNum(secondary.lastActivityTs, 0)),
+    confidence: Math.max(toNum(primary.confidence, 0), toNum(secondary.confidence, 0)),
+    openLoopScore: Math.max(toNum(primary.openLoopScore, 0), toNum(secondary.openLoopScore, 0))
+  };
+}
+
+function applyTaskRelationsForSync(tasks, relations) {
+  const resolved = resolveRelationMapsForTasks(tasks || [], relations || defaultTaskRelations());
+  const taskMap = new Map((tasks || []).map((task) => [task.taskId, { ...task }]));
+  const suppressed = new Set();
+
+  for (const [childTaskId, parentTaskId] of Object.entries(resolved.mergedIntoByTaskId || {})) {
+    if (resolved.keepSeparatePairs?.[taskPairKey(childTaskId, parentTaskId)]) {
+      continue;
+    }
+    const child = taskMap.get(childTaskId);
+    const parentRootId = resolveMergeRoot(parentTaskId, resolved.mergedIntoByTaskId || {});
+    const parent = taskMap.get(parentRootId);
+    if (!child || !parent || child.taskId === parent.taskId) {
+      continue;
+    }
+    const merged = mergeTaskRecordsForSync(parent, child);
+    taskMap.set(parent.taskId, merged);
+    suppressed.add(child.taskId);
+  }
+
+  return [...taskMap.values()]
+    .filter((task) => !suppressed.has(task.taskId))
+    .sort((a, b) => toNum(b.lastActivityTs, 0) - toNum(a.lastActivityTs, 0));
+}
+
+async function getTaskRelations() {
+  const values = await chrome.storage.local.get([STORAGE_KEYS.TASK_RELATIONS]);
+  return normalizeTaskRelations(values[STORAGE_KEYS.TASK_RELATIONS] || defaultTaskRelations());
+}
+
+async function setTaskRelations(relations) {
+  const normalized = normalizeTaskRelations(relations);
+  await chrome.storage.local.set({ [STORAGE_KEYS.TASK_RELATIONS]: normalized });
+  return normalized;
+}
+
+function resolveMergeRoot(taskId, mergedIntoByTaskId) {
+  let current = String(taskId || "").trim();
+  const visited = new Set();
+  while (current && mergedIntoByTaskId[current] && !visited.has(current)) {
+    visited.add(current);
+    const next = String(mergedIntoByTaskId[current] || "").trim();
+    if (!next || next === current) {
+      break;
+    }
+    current = next;
+  }
+  return current;
+}
+
+async function mergeTaskRelations(
+  primaryTaskId,
+  secondaryTaskId,
+  primaryTaskSnapshot = null,
+  secondaryTaskSnapshot = null
+) {
+  const primary = String(primaryTaskId || "").trim();
+  const secondary = String(secondaryTaskId || "").trim();
+  if (!primary || !secondary || primary === secondary) {
+    throw new Error("Invalid merge task ids");
+  }
+
+  const relations = await getTaskRelations();
+  const merged = { ...relations.mergedIntoByTaskId };
+  const keepSeparate = { ...relations.keepSeparatePairs };
+  const mergeRules = [...(relations.mergeRules || [])];
+
+  const primaryRoot = resolveMergeRoot(primary, merged);
+  const secondaryRoot = resolveMergeRoot(secondary, merged);
+  if (primaryRoot && secondaryRoot && primaryRoot !== secondaryRoot) {
+    merged[secondaryRoot] = primaryRoot;
+    delete keepSeparate[taskPairKey(primaryRoot, secondaryRoot)];
+  }
+  const nextMergeRules = appendTaskRelationRule(mergeRules, {
+    ruleType: "merge",
+    primaryTaskId: primaryRoot || primary,
+    secondaryTaskId: secondaryRoot || secondary,
+    primarySnapshot: normalizeTaskRelationSnapshot(primaryTaskSnapshot, primaryRoot || primary),
+    secondarySnapshot: normalizeTaskRelationSnapshot(secondaryTaskSnapshot, secondaryRoot || secondary),
+    createdAt: nowMs()
+  });
+
+  return setTaskRelations({
+    mergedIntoByTaskId: merged,
+    keepSeparatePairs: keepSeparate,
+    mergeRules: nextMergeRules,
+    keepSeparateRules: relations.keepSeparateRules
+  });
+}
+
+async function keepTasksSeparate(
+  primaryTaskId,
+  secondaryTaskId,
+  primaryTaskSnapshot = null,
+  secondaryTaskSnapshot = null
+) {
+  const primary = String(primaryTaskId || "").trim();
+  const secondary = String(secondaryTaskId || "").trim();
+  if (!primary || !secondary || primary === secondary) {
+    throw new Error("Invalid task ids");
+  }
+
+  const relations = await getTaskRelations();
+  const merged = { ...relations.mergedIntoByTaskId };
+  const keepSeparate = { ...relations.keepSeparatePairs };
+  const mergeRules = [...(relations.mergeRules || [])];
+  const keepSeparateRules = [...(relations.keepSeparateRules || [])];
+
+  const primaryRoot = resolveMergeRoot(primary, merged) || primary;
+  const secondaryRoot = resolveMergeRoot(secondary, merged) || secondary;
+  const key = taskPairKey(primaryRoot, secondaryRoot);
+  keepSeparate[key] = nowMs();
+  if (merged[primary] === secondaryRoot) {
+    delete merged[primary];
+  }
+  if (merged[secondary] === primaryRoot) {
+    delete merged[secondary];
+  }
+  if (merged[secondaryRoot] === primaryRoot) {
+    delete merged[secondaryRoot];
+  }
+  if (merged[primaryRoot] === secondaryRoot) {
+    delete merged[primaryRoot];
+  }
+  const filteredMergeRules = mergeRules.filter((rule) => {
+    const ids = [
+      String(rule.primaryTaskId || "").trim(),
+      String(rule.secondaryTaskId || "").trim(),
+      String(rule.primarySnapshot?.taskId || "").trim(),
+      String(rule.secondarySnapshot?.taskId || "").trim()
+    ];
+    const hasPrimary = ids.includes(primaryRoot) || ids.includes(primary);
+    const hasSecondary = ids.includes(secondaryRoot) || ids.includes(secondary);
+    return !(hasPrimary && hasSecondary);
+  });
+  const nextKeepRules = appendTaskRelationRule(keepSeparateRules, {
+    ruleType: "keep_separate",
+    primaryTaskId: primaryRoot,
+    secondaryTaskId: secondaryRoot,
+    primarySnapshot: normalizeTaskRelationSnapshot(primaryTaskSnapshot, primaryRoot),
+    secondarySnapshot: normalizeTaskRelationSnapshot(secondaryTaskSnapshot, secondaryRoot),
+    createdAt: nowMs()
+  });
+
+  return setTaskRelations({
+    mergedIntoByTaskId: merged,
+    keepSeparatePairs: keepSeparate,
+    mergeRules: filteredMergeRules,
+    keepSeparateRules: nextKeepRules
+  });
+}
+
+async function unmergeTasks(primaryTaskId, secondaryTaskId = "") {
+  const primary = String(primaryTaskId || "").trim();
+  const secondary = String(secondaryTaskId || "").trim();
+  if (!primary) {
+    throw new Error("Missing primaryTaskId");
+  }
+
+  const relations = await getTaskRelations();
+  const merged = { ...relations.mergedIntoByTaskId };
+  const mergeRules = [...(relations.mergeRules || [])];
+  const keepSeparate = { ...(relations.keepSeparatePairs || {}) };
+  let keepSeparateRules = [...(relations.keepSeparateRules || [])];
+
+  if (secondary) {
+    const secondaryRoot = resolveMergeRoot(secondary, merged);
+    if (merged[secondaryRoot] === primary) {
+      delete merged[secondaryRoot];
+    }
+  } else {
+    for (const [taskId] of Object.entries(merged)) {
+      const root = resolveMergeRoot(taskId, merged);
+      if (root === primary || String(merged[taskId] || "") === primary) {
+        delete merged[taskId];
+      }
+    }
+  }
+
+  const filteredMergeRules = mergeRules.filter((rule) => {
+    const ruleIds = [
+      String(rule.primaryTaskId || "").trim(),
+      String(rule.secondaryTaskId || "").trim(),
+      String(rule.primarySnapshot?.taskId || "").trim(),
+      String(rule.secondarySnapshot?.taskId || "").trim()
+    ];
+    if (secondary) {
+      const hasPrimary = ruleIds.includes(primary);
+      const hasSecondary = ruleIds.includes(secondary);
+      const remove = hasPrimary && hasSecondary;
+      if (remove) {
+        const primarySnapshot = normalizeTaskRelationSnapshot(
+          rule.primarySnapshot,
+          String(rule.primaryTaskId || "").trim()
+        );
+        const secondarySnapshot = normalizeTaskRelationSnapshot(
+          rule.secondarySnapshot,
+          String(rule.secondaryTaskId || "").trim()
+        );
+        keepSeparate[taskPairKey(primarySnapshot?.taskId || primary, secondarySnapshot?.taskId || secondary)] = nowMs();
+        keepSeparateRules = appendTaskRelationRule(keepSeparateRules, {
+          ruleType: "keep_separate",
+          primaryTaskId: primarySnapshot?.taskId || primary,
+          secondaryTaskId: secondarySnapshot?.taskId || secondary,
+          primarySnapshot,
+          secondarySnapshot,
+          createdAt: nowMs()
+        });
+      }
+      return !remove;
+    }
+    const remove = ruleIds.includes(primary);
+    if (remove) {
+      const primarySnapshot = normalizeTaskRelationSnapshot(
+        rule.primarySnapshot,
+        String(rule.primaryTaskId || "").trim()
+      );
+      const secondarySnapshot = normalizeTaskRelationSnapshot(
+        rule.secondarySnapshot,
+        String(rule.secondaryTaskId || "").trim()
+      );
+      const pId = primarySnapshot?.taskId || String(rule.primaryTaskId || "").trim() || primary;
+      const sId = secondarySnapshot?.taskId || String(rule.secondaryTaskId || "").trim();
+      if (sId && pId && sId !== pId) {
+        keepSeparate[taskPairKey(pId, sId)] = nowMs();
+        keepSeparateRules = appendTaskRelationRule(keepSeparateRules, {
+          ruleType: "keep_separate",
+          primaryTaskId: pId,
+          secondaryTaskId: sId,
+          primarySnapshot,
+          secondarySnapshot,
+          createdAt: nowMs()
+        });
+      }
+    }
+    return !remove;
+  });
+
+  return setTaskRelations({
+    mergedIntoByTaskId: merged,
+    keepSeparatePairs: keepSeparate,
+    mergeRules: filteredMergeRules,
+    keepSeparateRules
+  });
 }
 
 async function removeTaskOverride(taskId) {
@@ -125,7 +758,15 @@ async function updateTaskOverride(taskId, patch) {
     updatedAt: nowMs()
   };
 
-  if (!next.title && !next.done) {
+  const status = String(next.status || "").trim();
+  const hasLifecycle =
+    Boolean(next.done) ||
+    status === "done" ||
+    status === "dropped" ||
+    (status === "snoozed" && toNum(next.snoozedUntilTs, 0) > nowMs());
+  const hasMeaningfulValue = Boolean(next.title) || hasLifecycle;
+
+  if (!hasMeaningfulValue) {
     delete overrides[taskId];
   } else {
     overrides[taskId] = next;
@@ -241,6 +882,7 @@ async function getSettings() {
     STORAGE_KEYS.TRACKING_PAUSED,
     STORAGE_KEYS.RETENTION_DAYS,
     STORAGE_KEYS.TASK_OVERRIDES,
+    STORAGE_KEYS.TASK_RELATIONS,
     STORAGE_KEYS.NUDGE_SETTINGS,
     STORAGE_KEYS.NUDGE_STATE,
     STORAGE_KEYS.SYNC_SETTINGS
@@ -252,11 +894,18 @@ async function getSettings() {
   );
 
   const nudgeState = values[STORAGE_KEYS.NUDGE_STATE] || defaultNudgeState();
+  const taskRelations = normalizeTaskRelations(values[STORAGE_KEYS.TASK_RELATIONS] || defaultTaskRelations());
 
   return {
     trackingPaused: values[STORAGE_KEYS.TRACKING_PAUSED] ?? DEFAULTS.trackingPaused,
     retentionDays: values[STORAGE_KEYS.RETENTION_DAYS] ?? DEFAULTS.retentionDays,
     taskOverrideCount: Object.keys(values[STORAGE_KEYS.TASK_OVERRIDES] || {}).length,
+    taskMergeCount: Object.keys(taskRelations.mergedIntoByTaskId || {}).length,
+    taskKeepSeparateCount: Object.keys(taskRelations.keepSeparatePairs || {}).length,
+    taskMergeRuleCount: Array.isArray(taskRelations.mergeRules) ? taskRelations.mergeRules.length : 0,
+    taskKeepSeparateRuleCount: Array.isArray(taskRelations.keepSeparateRules)
+      ? taskRelations.keepSeparateRules.length
+      : 0,
     nudgeSettings,
     nudgeDailyCount: Number(nudgeState?.daily?.count || 0),
     syncSettings: normalizeSyncSettings(values[STORAGE_KEYS.SYNC_SETTINGS], DEFAULTS.syncSettings)
@@ -306,16 +955,17 @@ async function getTabById(tabId) {
 
 async function buildTaskFeed(limit = DEFAULTS.feedLimit, includeDone = false, opts = {}) {
   const lookbackMs = 7 * 24 * 60 * 60 * 1000;
+  const currentTs = opts.nowTs || nowMs();
   const events = await withRetry(() => getRecentEvents(5000, nowMs() - lookbackMs));
   const taskOverrides = await getTaskOverrides();
   const tasks = buildTaskFeedFromEvents(events, {
     limit,
     includeDone,
-    taskOverrides
+    taskOverrides,
+    nowTs: currentTs
   });
 
   const nudgeSettings = opts.nudgeSettings || (await getNudgeSettings());
-  const currentTs = opts.nowTs || nowMs();
 
   for (const task of tasks) {
     task.openLoopScore = computeOpenLoopScore(task, currentTs, nudgeSettings);
@@ -351,12 +1001,35 @@ async function applyRemoteTaskAction(action) {
   }
 
   if (actionType === "set_done") {
-    await updateTaskOverride(taskId, { done: Boolean(payload.done) });
+    await updateTaskOverride(taskId, {
+      done: Boolean(payload.done),
+      status: Boolean(payload.done) ? "done" : "active",
+      snoozedUntilTs: 0
+    });
     return;
   }
 
   if (actionType === "set_active") {
-    await updateTaskOverride(taskId, { done: false });
+    await updateTaskOverride(taskId, { done: false, status: "active", snoozedUntilTs: 0 });
+    return;
+  }
+
+  if (actionType === "set_status") {
+    const status = normalizeTaskLifecycleStatus(payload.status);
+    await updateTaskOverride(taskId, {
+      done: status === "done",
+      status,
+      snoozedUntilTs: status === "snoozed" ? toNum(payload.snoozedUntilTs, 0) : 0
+    });
+    return;
+  }
+
+  if (actionType === "snooze_until") {
+    await updateTaskOverride(taskId, {
+      done: false,
+      status: "snoozed",
+      snoozedUntilTs: toNum(payload.snoozedUntilTs, 0)
+    });
     return;
   }
 
@@ -427,7 +1100,9 @@ async function pullRemoteActions(syncSettings) {
 }
 
 async function uploadTaskFeedSnapshot(syncSettings) {
-  const tasks = await buildTaskFeed(200, true);
+  const baseTasks = await buildTaskFeed(200, true);
+  const taskRelations = await getTaskRelations();
+  const tasks = applyTaskRelationsForSync(baseTasks, taskRelations);
   const snapshotTs = nowMs();
 
   const response = await fetchSyncJson(syncSettings, "/v1/sync/upload", {
@@ -436,7 +1111,8 @@ async function uploadTaskFeedSnapshot(syncSettings) {
       deviceId: syncSettings.deviceId,
       snapshotTs,
       schemaVersion: 1,
-      tasks
+      tasks,
+      replaceMissing: true
     }
   });
 
@@ -488,6 +1164,35 @@ async function performSyncNow(reason = "manual", { forceRegister = false } = {})
   }
 }
 
+async function pushTaskActionToBackend(taskId, actionType, payload = {}) {
+  const safeTaskId = String(taskId || "").trim();
+  if (!safeTaskId) {
+    throw new Error("Missing taskId");
+  }
+
+  let syncSettings = await getSyncSettings();
+  if (!syncSettings.enabled || !isSyncConfigured(syncSettings)) {
+    return { ok: false, skipped: true, reason: "sync_not_configured" };
+  }
+
+  if (!syncSettings.deviceId) {
+    syncSettings = await registerSyncDevice({ force: false });
+  }
+
+  const encodedTaskId = encodeURIComponent(safeTaskId);
+  const response = await fetchSyncJson(syncSettings, `/v1/tasks/${encodedTaskId}/actions`, {
+    method: "POST",
+    body: {
+      actionType,
+      payload,
+      deviceId: syncSettings.deviceId || null
+    }
+  });
+
+  await setSyncSettings({ lastError: "" });
+  return response;
+}
+
 function triggerBackgroundSync(reason) {
   performSyncNow(reason).catch(() => {
     // Best-effort background sync; errors are persisted in sync settings.
@@ -509,72 +1214,127 @@ async function openBriefingPage(taskId = "") {
   await chrome.tabs.create({ url: finalUrl });
 }
 
+async function latestScrollByUrl(urls) {
+  const normalizedUrls = [...new Set((urls || []).map((url) => canonicalizeUrl(String(url || ""))).filter(Boolean))];
+  if (!normalizedUrls.length) {
+    return {};
+  }
+
+  const urlSet = new Set(normalizedUrls);
+  const events = await withRetry(() => getRecentEvents(12_000, nowMs() - RESUME_SCROLL_LOOKBACK_MS));
+  const output = {};
+
+  for (const event of events) {
+    if (event.event_type !== "engagement_snapshot") {
+      continue;
+    }
+    const url = canonicalizeUrl(String(event.url || ""));
+    if (!urlSet.has(url) || output[url]) {
+      continue;
+    }
+    const scrollPct = clamp(toNum(event.payload?.scrollPct, -1), 0, 100);
+    if (!Number.isFinite(scrollPct) || scrollPct < 3) {
+      continue;
+    }
+    output[url] = {
+      scrollPct: Number(scrollPct.toFixed(1)),
+      ts: toNum(event.ts, 0)
+    };
+  }
+
+  return output;
+}
+
+async function tryRestoreScrollInTab(tabId) {
+  const pending = pendingScrollRestoreByTabId.get(tabId);
+  if (!pending) {
+    return;
+  }
+
+  if (pending.attempts >= RESUME_SCROLL_MAX_ATTEMPTS) {
+    pendingScrollRestoreByTabId.delete(tabId);
+    return;
+  }
+
+  pending.attempts += 1;
+  pendingScrollRestoreByTabId.set(tabId, pending);
+
+  try {
+    const tab = await getTabById(tabId);
+    if (!tab?.url) {
+      throw new Error("Tab not ready");
+    }
+    const canonicalTabUrl = canonicalizeUrl(tab.url);
+    if (pending.url && canonicalTabUrl && canonicalTabUrl !== pending.url) {
+      pendingScrollRestoreByTabId.delete(tabId);
+      return;
+    }
+    await chrome.tabs.sendMessage(tabId, {
+      type: "RESTORE_SCROLL_POSITION",
+      scrollPct: pending.scrollPct
+    });
+    pendingScrollRestoreByTabId.delete(tabId);
+  } catch {
+    setTimeout(() => {
+      tryRestoreScrollInTab(tabId);
+    }, 220 + pending.attempts * 140);
+  }
+}
+
 async function resumeTask(urls) {
   if (!Array.isArray(urls) || urls.length === 0) {
     return;
   }
 
-  await chrome.tabs.create({ url: urls[0], active: true });
-  for (const url of urls.slice(1)) {
-    await chrome.tabs.create({ url, active: false });
+  const filtered = [...new Set(urls.map((url) => String(url || "").trim()).filter((url) => isTrackableWebUrl(url)))];
+  if (!filtered.length) {
+    return;
+  }
+
+  const scrollByUrl = await latestScrollByUrl(filtered);
+  const openedTabs = [];
+
+  for (let i = 0; i < filtered.length; i += 1) {
+    const url = filtered[i];
+    const tab = await chrome.tabs.create({ url, active: i === 0 });
+    openedTabs.push(tab);
+
+    const canonicalUrl = canonicalizeUrl(url);
+    const snapshot = scrollByUrl[canonicalUrl];
+    if (snapshot && tab?.id !== undefined) {
+      pendingScrollRestoreByTabId.set(tab.id, {
+        url: canonicalUrl,
+        scrollPct: snapshot.scrollPct,
+        attempts: 0
+      });
+      tryRestoreScrollInTab(tab.id);
+    }
+  }
+
+  if (openedTabs.length) {
+    await ingestEvent("guided_resume", {
+      tabId: openedTabs[0]?.id ?? null,
+      windowId: openedTabs[0]?.windowId ?? null,
+      url: filtered[0],
+      payload: {
+        restoredCount: openedTabs.length,
+        withScrollMemoryCount: Object.keys(scrollByUrl).length
+      }
+    });
   }
 }
 
 async function cleanupOldEvents() {
   const settings = await getSettings();
+  const now = nowMs();
   const retentionDays = Math.max(1, settings.retentionDays);
-  const cutoffTs = nowMs() - retentionDays * 24 * 60 * 60 * 1000;
+  const cutoffTs = now - retentionDays * 24 * 60 * 60 * 1000;
   await withRetry(() => pruneEventsBefore(cutoffTs));
-}
-
-async function evaluateAndSendNudges() {
-  const ts = nowMs();
-  const nudgeSettings = await getNudgeSettings();
-  const tasks = await buildTaskFeed(200, false, { nudgeSettings, nowTs: ts });
-  const currentState = await getNudgeState();
-
-  const { selected, state: normalizedState } = selectNudgeCandidates(
-    tasks,
-    currentState,
-    nudgeSettings,
-    ts
-  );
-
-  if (!selected.length) {
-    if (normalizedState !== currentState) {
-      await setNudgeState(normalizedState);
-    }
-    return;
-  }
-
-  const sent = [];
-
-  for (const item of selected) {
-    const content = buildNudgeNotification(item);
-    const id = notificationId(item.taskId, item.phase, ts);
-
-    try {
-      await chrome.notifications.create(id, {
-        type: "basic",
-        title: content.title,
-        message: content.message,
-        contextMessage: content.contextMessage,
-        iconUrl: chrome.runtime.getURL("src/shared/icon-128.png"),
-        priority: 1
-      });
-      sent.push(item);
-    } catch {
-      // Ignore notification send failures and continue evaluating others.
-    }
-  }
-
-  const nextState = applyNudgeSends(normalizedState, sent, ts);
-  await setNudgeState(nextState);
+  await withRetry(() => purgeDeletedEventsBefore(now - DELETED_EVENT_GRACE_MS));
 }
 
 async function ensureAlarms() {
   await chrome.alarms.create(ALARM_RETENTION_CLEANUP, { periodInMinutes: 60 });
-  await chrome.alarms.create(ALARM_NUDGE_EVALUATION, { periodInMinutes: 60 });
   await chrome.alarms.create(ALARM_SYNC_EVALUATION, { periodInMinutes: 15 });
 }
 
@@ -583,6 +1343,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     STORAGE_KEYS.TRACKING_PAUSED,
     STORAGE_KEYS.RETENTION_DAYS,
     STORAGE_KEYS.TASK_OVERRIDES,
+    STORAGE_KEYS.TASK_RELATIONS,
     STORAGE_KEYS.NUDGE_SETTINGS,
     STORAGE_KEYS.NUDGE_STATE,
     STORAGE_KEYS.SYNC_SETTINGS
@@ -593,6 +1354,9 @@ chrome.runtime.onInstalled.addListener(async () => {
       existing[STORAGE_KEYS.TRACKING_PAUSED] ?? DEFAULTS.trackingPaused,
     [STORAGE_KEYS.RETENTION_DAYS]: existing[STORAGE_KEYS.RETENTION_DAYS] ?? DEFAULTS.retentionDays,
     [STORAGE_KEYS.TASK_OVERRIDES]: existing[STORAGE_KEYS.TASK_OVERRIDES] ?? {},
+    [STORAGE_KEYS.TASK_RELATIONS]: normalizeTaskRelations(
+      existing[STORAGE_KEYS.TASK_RELATIONS] || defaultTaskRelations()
+    ),
     [STORAGE_KEYS.NUDGE_SETTINGS]: normalizeNudgeSettings(
       existing[STORAGE_KEYS.NUDGE_SETTINGS] || {},
       DEFAULTS.nudgeSettings
@@ -617,26 +1381,11 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     return;
   }
 
-  if (alarm.name === ALARM_NUDGE_EVALUATION) {
-    await evaluateAndSendNudges();
-    return;
-  }
-
   if (alarm.name === ALARM_SYNC_EVALUATION) {
     await performSyncNow("alarm").catch(() => {
       // Keep alarm loop resilient; sync errors are recorded in settings.
     });
   }
-});
-
-chrome.notifications.onClicked.addListener(async (id) => {
-  const parsed = parseNotificationId(id);
-  if (!parsed) {
-    return;
-  }
-
-  await chrome.notifications.clear(id);
-  await openBriefingPage(parsed.taskId);
 });
 
 chrome.tabs.onCreated.addListener(async (tab) => {
@@ -660,6 +1409,10 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (pendingScrollRestoreByTabId.has(tabId) && changeInfo.status === "complete") {
+    tryRestoreScrollInTab(tabId);
+  }
+
   if (!changeInfo.url && !changeInfo.status) {
     return;
   }
@@ -674,6 +1427,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+  pendingScrollRestoreByTabId.delete(tabId);
+
   await ingestEvent("tab_removed", {
     tabId,
     windowId: removeInfo.windowId,
@@ -724,6 +1479,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
 
+    if (message.type === MESSAGE_TYPES.GET_TASK_RELATIONS) {
+      const taskRelations = await getTaskRelations();
+      sendResponse({ ok: true, taskRelations });
+      return;
+    }
+
     if (message.type === MESSAGE_TYPES.GET_REMOTE_TASK_FEED) {
       const includeDone = Boolean(message?.filters?.includeDone);
       const limit = Math.min(500, Math.max(1, Number(message?.filters?.limit || DEFAULTS.feedLimit)));
@@ -759,6 +1520,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
 
+    if (message.type === MESSAGE_TYPES.GET_DAILY_SUMMARY) {
+      const days = Math.max(1, Math.min(30, Number(message?.filters?.days || 7)));
+      const lookbackMs = days * 24 * 60 * 60 * 1000;
+      const events = await withRetry(() =>
+        getRecentEvents(10000, nowMs() - lookbackMs, { includeSoftDeleted: true })
+      );
+      const summaries = buildDailySemanticsFromEvents(events, {
+        days,
+        nowTs: nowMs()
+      });
+      sendResponse({ ok: true, summaries });
+      return;
+    }
+
     if (message.type === MESSAGE_TYPES.OPEN_BRIEFING_PAGE) {
       await openBriefingPage(String(message?.taskId || ""));
       sendResponse({ ok: true });
@@ -773,7 +1548,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.type === MESSAGE_TYPES.DELETE_TASK) {
       const taskId = String(message.taskId || "").trim();
-      const urls = (message.urls || [])
+      let urls = (message.urls || [])
         .map((url) => canonicalizeUrl(String(url || "")))
         .filter((url) => isTrackableWebUrl(url));
       if (!taskId) {
@@ -781,10 +1556,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+      if (!urls.length) {
+        urls = await taskUrlsForId(taskId);
+      }
+
       const deletedEvents = await withRetry(() => deleteEventsByUrls(urls));
       await removeTaskOverride(taskId);
+
+      let cloudAction = null;
+      try {
+        cloudAction = await pushTaskActionToBackend(taskId, "delete_task_context", { urls });
+      } catch (error) {
+        await setSyncSettings({
+          lastError: String(error?.message || error || "Could not sync task delete")
+        });
+      }
+
       triggerBackgroundSync("local-delete-task");
-      sendResponse({ ok: true, deletedEvents });
+      sendResponse({ ok: true, deletedEvents, cloudAction });
       return;
     }
 
@@ -812,9 +1601,153 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ ok: false, error: "Missing taskId" });
         return;
       }
-      await updateTaskOverride(taskId, { done });
+      await updateTaskOverride(taskId, {
+        done,
+        status: done ? "done" : "active",
+        snoozedUntilTs: 0
+      });
+
+      let cloudAction = null;
+      try {
+        cloudAction = await pushTaskActionToBackend(
+          taskId,
+          done ? "set_done" : "set_active",
+          done ? { done: true } : {}
+        );
+      } catch (error) {
+        await setSyncSettings({
+          lastError: String(error?.message || error || "Could not sync task done state")
+        });
+      }
+
       triggerBackgroundSync("local-set-done");
-      sendResponse({ ok: true, done });
+      sendResponse({ ok: true, done, cloudAction });
+      return;
+    }
+
+    if (message.type === MESSAGE_TYPES.SET_TASK_LIFECYCLE) {
+      const taskId = String(message.taskId || "").trim();
+      const status = normalizeTaskLifecycleStatus(message.status);
+      const snoozedUntilTs = toNum(message.snoozedUntilTs, 0);
+      if (!taskId) {
+        sendResponse({ ok: false, error: "Missing taskId" });
+        return;
+      }
+
+      await updateTaskOverride(taskId, {
+        done: status === "done",
+        status,
+        snoozedUntilTs: status === "snoozed" ? snoozedUntilTs : 0
+      });
+
+      let cloudAction = null;
+      try {
+        if (status === "done" || status === "dropped") {
+          cloudAction = await pushTaskActionToBackend(taskId, "set_done", { done: true });
+        } else if (status === "active") {
+          cloudAction = await pushTaskActionToBackend(taskId, "set_active", {});
+        }
+      } catch (error) {
+        await setSyncSettings({
+          lastError: String(error?.message || error || "Could not sync task lifecycle")
+        });
+      }
+
+      triggerBackgroundSync("local-set-lifecycle");
+      sendResponse({
+        ok: true,
+        status,
+        snoozedUntilTs: status === "snoozed" ? snoozedUntilTs : 0,
+        cloudAction
+      });
+      return;
+    }
+
+    if (message.type === MESSAGE_TYPES.SNOOZE_TASK) {
+      const taskId = String(message.taskId || "").trim();
+      const snoozedUntilTs = Math.max(nowMs() + 60_000, toNum(message.snoozedUntilTs, 0));
+      if (!taskId) {
+        sendResponse({ ok: false, error: "Missing taskId" });
+        return;
+      }
+      await updateTaskOverride(taskId, {
+        done: false,
+        status: "snoozed",
+        snoozedUntilTs
+      });
+      triggerBackgroundSync("local-snooze-task");
+      sendResponse({ ok: true, status: "snoozed", snoozedUntilTs });
+      return;
+    }
+
+    if (message.type === MESSAGE_TYPES.REMIND_TASK_AT) {
+      const taskId = String(message.taskId || "").trim();
+      const remindAtTs = Math.max(nowMs() + 60_000, toNum(message.remindAtTs, 0));
+      if (!taskId) {
+        sendResponse({ ok: false, error: "Missing taskId" });
+        return;
+      }
+      await updateTaskOverride(taskId, {
+        done: false,
+        status: "snoozed",
+        snoozedUntilTs: remindAtTs
+      });
+      triggerBackgroundSync("local-remind-at");
+      sendResponse({ ok: true, status: "snoozed", snoozedUntilTs: remindAtTs });
+      return;
+    }
+
+    if (message.type === MESSAGE_TYPES.REMIND_TASK_FRIDAY) {
+      const taskId = String(message.taskId || "").trim();
+      if (!taskId) {
+        sendResponse({ ok: false, error: "Missing taskId" });
+        return;
+      }
+      const snoozedUntilTs = upcomingFridayAt(9, 0);
+      await updateTaskOverride(taskId, {
+        done: false,
+        status: "snoozed",
+        snoozedUntilTs
+      });
+      triggerBackgroundSync("local-remind-friday");
+      sendResponse({ ok: true, status: "snoozed", snoozedUntilTs });
+      return;
+    }
+
+    if (message.type === MESSAGE_TYPES.MERGE_TASKS) {
+      const primaryTaskId = String(message.primaryTaskId || "").trim();
+      const secondaryTaskId = String(message.secondaryTaskId || "").trim();
+      const taskRelations = await mergeTaskRelations(
+        primaryTaskId,
+        secondaryTaskId,
+        message.primaryTaskSnapshot || null,
+        message.secondaryTaskSnapshot || null
+      );
+      triggerBackgroundSync("local-merge-tasks");
+      sendResponse({ ok: true, taskRelations });
+      return;
+    }
+
+    if (message.type === MESSAGE_TYPES.KEEP_TASKS_SEPARATE) {
+      const primaryTaskId = String(message.primaryTaskId || "").trim();
+      const secondaryTaskId = String(message.secondaryTaskId || "").trim();
+      const taskRelations = await keepTasksSeparate(
+        primaryTaskId,
+        secondaryTaskId,
+        message.primaryTaskSnapshot || null,
+        message.secondaryTaskSnapshot || null
+      );
+      triggerBackgroundSync("local-keep-separate");
+      sendResponse({ ok: true, taskRelations });
+      return;
+    }
+
+    if (message.type === MESSAGE_TYPES.UNMERGE_TASKS) {
+      const primaryTaskId = String(message.primaryTaskId || "").trim();
+      const secondaryTaskId = String(message.secondaryTaskId || "").trim();
+      const taskRelations = await unmergeTasks(primaryTaskId, secondaryTaskId);
+      triggerBackgroundSync("local-unmerge-tasks");
+      sendResponse({ ok: true, taskRelations });
       return;
     }
 
@@ -912,6 +1845,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await withRetry(() => clearAllEvents());
       await chrome.storage.local.set({
         [STORAGE_KEYS.TASK_OVERRIDES]: {},
+        [STORAGE_KEYS.TASK_RELATIONS]: defaultTaskRelations(),
         [STORAGE_KEYS.NUDGE_STATE]: defaultNudgeState()
       });
       const syncSettings = await getSyncSettings();

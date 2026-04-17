@@ -14,13 +14,13 @@ public struct DetailedBriefsTabView: View {
 
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ContextHeaderCard(
-                        title: "Detailed Briefs",
-                        subtitle: "Structured breakdowns with top pages and missing checks.",
-                        icon: "doc.text.magnifyingglass"
+                        title: "Action Plan",
+                        subtitle: "Decision context and concrete steps to finish tasks.",
+                        icon: "checklist"
                     )
 
                     if briefs.isEmpty {
-                        Text("No detailed briefs yet.")
+                        Text("No action plans yet.")
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contextCard(tint: ContextUI.accentSoft)
@@ -30,15 +30,32 @@ public struct DetailedBriefsTabView: View {
                                 Text(brief.title)
                                     .font(.custom("Avenir Next Demi Bold", size: 18))
 
-                                Text(brief.headline)
+                                Text(brief.objective)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
 
-                                if !brief.observations.isEmpty {
+                                Text("Intent: \(brief.intentLabel)")
+                                    .font(.footnote.weight(.semibold))
+
+                                Text(brief.decisionSnapshot)
+                                    .font(.footnote)
+
+                                if !brief.whyTimeline.isEmpty {
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text("Observations")
+                                        Text("Why This Exists")
                                             .font(.subheadline.weight(.semibold))
-                                        ForEach(brief.observations, id: \.self) { line in
+                                        ForEach(brief.whyTimeline, id: \.self) { line in
+                                            Text("• \(line)")
+                                                .font(.footnote)
+                                        }
+                                    }
+                                }
+
+                                if !brief.findings.isEmpty {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("What We Detected")
+                                            .font(.subheadline.weight(.semibold))
+                                        ForEach(brief.findings, id: \.self) { line in
                                             Text("• \(line)")
                                                 .font(.footnote)
                                         }
@@ -47,14 +64,14 @@ public struct DetailedBriefsTabView: View {
 
                                 if !brief.topPages.isEmpty {
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text("Top Pages")
+                                        Text("Best Next Pages")
                                             .font(.subheadline.weight(.semibold))
                                         ForEach(brief.topPages) { page in
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(page.title)
                                                     .font(.footnote)
                                                     .lineLimit(2)
-                                                Text("\(page.state.capitalized) • \(page.domain) • score \(Int(page.interestScore.rounded()))")
+                                                Text("\(page.state.capitalized) • \(page.domain) • interest \(Int(page.interestScore.rounded()))")
                                                     .font(.caption)
                                                     .foregroundStyle(.secondary)
                                             }
@@ -62,17 +79,20 @@ public struct DetailedBriefsTabView: View {
                                     }
                                 }
 
-                                if !brief.missingChecks.isEmpty {
+                                if !brief.finishPlan.isEmpty {
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text("Missing Checks")
+                                        Text("Finish Plan")
                                             .font(.subheadline.weight(.semibold))
-                                        ForEach(brief.missingChecks, id: \.self) { line in
+                                        ForEach(brief.finishPlan, id: \.self) { line in
                                             Text("• \(line)")
                                                 .font(.footnote)
-                                                .foregroundStyle(.orange)
                                         }
                                     }
                                 }
+
+                                Text("Close rule: \(brief.closureHint)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contextCard()
@@ -81,7 +101,7 @@ public struct DetailedBriefsTabView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Detailed Briefs")
+            .navigationTitle("Action Plan")
             .refreshable {
                 await viewModel.refresh(limit: 100)
             }

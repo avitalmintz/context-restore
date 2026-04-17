@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildTaskFeedFromEvents, canonicalizeUrl, safeDomain } from "../src/background/inference.js";
+import {
+  buildDailySemanticsFromEvents,
+  buildTaskFeedFromEvents,
+  canonicalizeUrl,
+  safeDomain
+} from "../src/background/inference.js";
 
 function ev({
   event_type,
@@ -93,6 +98,287 @@ test("done override suppresses task by default and includeDone shows it", () => 
   assert.equal(visibleDone.length, 1);
   assert.equal(visibleDone[0].status, "done");
   assert.equal(visibleDone[0].title, "Done task");
+});
+
+test("snoozed override hides task by default and appears with includeDone", () => {
+  const ts = 1_700_000_200_000;
+  const nowTs = ts + 10_000;
+  const events = [
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 1_000,
+      url: "https://google.com/search?q=soccer+ball",
+      title: "soccer ball - Google Search"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 4_000,
+      url: "https://google.com/search?q=soccer+ball",
+      payload: { activeMsSinceLast: 20_000, scrollPct: 36 }
+    })
+  ];
+
+  const tasks = buildTaskFeedFromEvents(events, { limit: 10, includeDone: true, nowTs });
+  assert.equal(tasks.length, 1);
+  const taskId = tasks[0].taskId;
+
+  const hidden = buildTaskFeedFromEvents(events, {
+    limit: 10,
+    nowTs,
+    taskOverrides: {
+      [taskId]: { status: "snoozed", snoozedUntilTs: nowTs + 24 * 60 * 60 * 1000 }
+    }
+  });
+  assert.equal(hidden.length, 0);
+
+  const include = buildTaskFeedFromEvents(events, {
+    limit: 10,
+    includeDone: true,
+    nowTs,
+    taskOverrides: {
+      [taskId]: { status: "snoozed", snoozedUntilTs: nowTs + 24 * 60 * 60 * 1000 }
+    }
+  });
+  assert.equal(include.length, 1);
+  assert.equal(include[0].status, "snoozed");
+});
+
+test("task includes decision context, timeline, and resume plan", () => {
+  const ts = 1_700_010_000_000;
+  const events = [
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 1_000,
+      url: "https://google.com/search?q=adidas+soccer+ball",
+      title: "adidas soccer ball - Google Search"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 4_000,
+      url: "https://google.com/search?q=adidas+soccer+ball",
+      payload: { activeMsSinceLast: 12_000, scrollPct: 20 }
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 7_000,
+      url: "https://www.adidas.com/us/soccer-balls",
+      title: "Adidas Soccer Balls"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 10_000,
+      url: "https://www.adidas.com/us/soccer-balls",
+      payload: { activeMsSinceLast: 45_000, scrollPct: 86 }
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 14_000,
+      url: "https://www.amazon.com/s?k=soccer+ball",
+      title: "Amazon soccer ball"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 17_000,
+      url: "https://www.amazon.com/s?k=soccer+ball",
+      payload: { activeMsSinceLast: 16_000, scrollPct: 25 }
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 22_000,
+      url: "https://www.adidas.com/us/soccer-balls",
+      title: "Adidas Soccer Balls"
+    })
+  ];
+
+  const tasks = buildTaskFeedFromEvents(events, { limit: 10, includeDone: true, nowTs: ts + 30_000 });
+  assert.ok(tasks.length >= 1);
+  const target = tasks[0];
+  assert.ok(Array.isArray(target.timeline));
+  assert.ok(target.timeline.length >= 1);
+  assert.ok(Array.isArray(target.resumePlan?.orderedUrls));
+  assert.ok(target.resumePlan.orderedUrls.length >= 1);
+  assert.ok(Array.isArray(target.decisionContext?.reasons));
+  assert.ok(target.decisionContext.reasons.length >= 1);
+});
+
+test("task titles avoid generic task around wording", () => {
+  const ts = 1_700_010_100_000;
+  const events = [
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 1_000,
+      url: "https://google.com/search?q=neuralese",
+      title: "neuralese - Google Search"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 4_000,
+      url: "https://google.com/search?q=neuralese",
+      payload: { activeMsSinceLast: 25_000, scrollPct: 45 }
+    })
+  ];
+
+  const tasks = buildTaskFeedFromEvents(events, { limit: 10, includeDone: true });
+  assert.equal(tasks.length, 1);
+  assert.ok(!/task around/i.test(tasks[0].title));
+});
+
+test("keeps shopping cluster separate from unrelated tech/news article", () => {
+  const ts = 1_700_010_500_000;
+  const events = [
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 1_000,
+      url: "https://google.com/search?q=jackets",
+      title: "jackets - Google Search"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 5_000,
+      url: "https://google.com/search?q=jackets",
+      payload: { activeMsSinceLast: 20_000, scrollPct: 30 }
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 11_000,
+      url: "https://www.reformation.com/products/napoleon-faux-leather-jacket-black",
+      title: "Napoleon Faux Leather Jacket Black | Reformation"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 16_000,
+      url: "https://www.reformation.com/products/napoleon-faux-leather-jacket-black",
+      payload: { activeMsSinceLast: 38_000, scrollPct: 82 }
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 22_000,
+      url: "https://wallpaper.com/tech/these-kickstarter-catastrophes-and-design-duds-proved-tech-wasnt-always-the-answer-in-2025",
+      title: "These Kickstarter catastrophes and design duds proved tech wasn’t always the answer in 2025 | Wallpaper*"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 27_000,
+      url: "https://wallpaper.com/tech/these-kickstarter-catastrophes-and-design-duds-proved-tech-wasnt-always-the-answer-in-2025",
+      payload: { activeMsSinceLast: 24_000, scrollPct: 44 }
+    })
+  ];
+
+  const tasks = buildTaskFeedFromEvents(events, { limit: 10, includeDone: true });
+  const shopping = tasks.find(
+    (task) =>
+      task.category === "shopping" &&
+      task.urls.some((url) => url.includes("google.com/search?q=jackets")) &&
+      task.urls.some((url) => url.includes("reformation.com/products"))
+  );
+  assert.ok(shopping, "expected jackets search + reformation page in same shopping task");
+  assert.ok(
+    !shopping.urls.some((url) => url.includes("wallpaper.com/tech")),
+    "wallpaper article should not be merged into shopping cluster"
+  );
+});
+
+test("shopping adapter exposes option list and coverage checks", () => {
+  const ts = 1_700_010_700_000;
+  const events = [
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 1_000,
+      url: "https://google.com/search?q=adidas+soccer+ball",
+      title: "adidas soccer ball - Google Search"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 4_000,
+      url: "https://google.com/search?q=adidas+soccer+ball",
+      payload: { activeMsSinceLast: 18_000, scrollPct: 24 }
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 8_000,
+      url: "https://www.adidas.com/us/soccer-balls",
+      title: "Adidas Soccer Balls"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 12_000,
+      url: "https://www.adidas.com/us/soccer-balls",
+      payload: { activeMsSinceLast: 42_000, scrollPct: 88 }
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 15_000,
+      url: "https://www.amazon.com/s?k=soccer+ball+reviews",
+      title: "Amazon soccer ball reviews"
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 20_000,
+      url: "https://www.amazon.com/s?k=soccer+ball+reviews",
+      payload: { activeMsSinceLast: 20_000, scrollPct: 35 }
+    })
+  ];
+
+  const tasks = buildTaskFeedFromEvents(events, { limit: 10, includeDone: true });
+  const shopping = tasks.find((task) => task.category === "shopping");
+  assert.ok(shopping);
+  assert.equal(shopping.adapter?.type, "shopping");
+  assert.ok(Array.isArray(shopping.adapter?.options));
+  assert.ok(shopping.adapter.options.length >= 1);
+  assert.equal(typeof shopping.adapter?.checks?.reviews, "boolean");
+  assert.equal(typeof shopping.adapter?.checks?.returnPolicy, "boolean");
+  assert.equal(typeof shopping.adapter?.checks?.price, "boolean");
+});
+
+test("buildDailySemanticsFromEvents returns semantic recap and time sinks", () => {
+  const ts = 1_700_020_000_000;
+  const events = [
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 1_000,
+      url: "https://www.adidas.com/us/soccer-balls",
+      title: "Adidas Soccer Balls",
+      payload: { activeMsSinceLast: 30 * 60 * 1000, scrollPct: 80 }
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 2_000,
+      url: "https://instagram.com/",
+      title: "Instagram",
+      payload: { activeMsSinceLast: 35 * 60 * 1000, scrollPct: 20 }
+    }),
+    ev({
+      event_type: "engagement_snapshot",
+      ts: ts + 3_000,
+      url: "https://google.com/search?q=soccer+ball+reviews",
+      title: "soccer ball reviews - Google Search",
+      payload: { activeMsSinceLast: 10 * 60 * 1000, scrollPct: 25 }
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 4_000,
+      url: "https://google.com/search?q=soccer+ball+reviews",
+      title: "soccer ball reviews - Google Search"
+    }),
+    ev({
+      event_type: "tab_activated",
+      ts: ts + 5_000,
+      url: "https://google.com/search?q=soccer+ball+reviews",
+      title: "soccer ball reviews - Google Search"
+    })
+  ];
+
+  const summaries = buildDailySemanticsFromEvents(events, {
+    days: 7,
+    nowTs: ts + 6_000
+  });
+  assert.equal(summaries.length, 1);
+  const day = summaries[0];
+  assert.ok(day.semanticSummary.includes("You spent"));
+  assert.ok(Array.isArray(day.topCategories));
+  assert.ok(day.topCategories.length >= 1);
+  assert.ok(Array.isArray(day.likelyTimeSinks));
+  assert.ok(typeof day.coaching === "string");
 });
 
 test("does not merge unrelated same-domain shopping topics by default", () => {

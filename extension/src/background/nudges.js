@@ -158,7 +158,7 @@ export function selectNudgeCandidates(tasks, stateInput, settingsInput, nowTs) {
 
   const candidates = [];
   for (const task of tasks) {
-    if (task.status === "done") {
+    if (task.status !== "active") {
       continue;
     }
 

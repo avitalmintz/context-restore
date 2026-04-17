@@ -89,7 +89,7 @@ app.post("/v1/devices/register", async (req, res, next) => {
 
 app.post("/v1/sync/upload", async (req, res, next) => {
   try {
-    const { deviceId, snapshotTs, schemaVersion, tasks } = req.body || {};
+    const { deviceId, snapshotTs, schemaVersion, tasks, replaceMissing } = req.body || {};
 
     if (!deviceId) {
       res.status(400).json({ ok: false, error: "deviceId is required" });
@@ -110,7 +110,8 @@ app.post("/v1/sync/upload", async (req, res, next) => {
       userId: req.auth.userId,
       tasks,
       snapshotTs: toNum(snapshotTs, Date.now()),
-      schemaVersion: toNum(schemaVersion, 1)
+      schemaVersion: toNum(schemaVersion, 1),
+      replaceMissing: Boolean(replaceMissing)
     });
 
     await updateSyncCheckpoint({

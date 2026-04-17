@@ -26,19 +26,9 @@ public struct ContextRestoreRootView: View {
                         Label("Overview", systemImage: "tray.full")
                     }
 
-                AIBriefingTabView(viewModel: viewModel)
-                    .tabItem {
-                        Label("AI Briefing", systemImage: "sparkles")
-                    }
-
                 DetailedBriefsTabView(viewModel: viewModel)
                     .tabItem {
-                        Label("Detailed", systemImage: "doc.text.magnifyingglass")
-                    }
-
-                GapAnalysisTabView(viewModel: viewModel)
-                    .tabItem {
-                        Label("Gaps", systemImage: "exclamationmark.triangle")
+                        Label("Action Plan", systemImage: "checklist")
                     }
 
                 SettingsTabView(viewModel: viewModel)

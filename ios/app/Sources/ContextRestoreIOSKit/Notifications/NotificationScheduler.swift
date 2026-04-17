@@ -5,6 +5,7 @@ import UserNotifications
 public final class NotificationScheduler {
     private let center: UNUserNotificationCenter
     private let reminderIdentifier = "context-restore.daily-reminder"
+    private let taskReminderPrefix = "context-restore.task-reminder"
 
     public init(center: UNUserNotificationCenter = .current()) {
         self.center = center
@@ -53,6 +54,31 @@ public final class NotificationScheduler {
             trigger: trigger
         )
 
+        try await add(request: request)
+    }
+
+    public func scheduleTaskReminder(task: TaskItem, at remindAt: Date) async throws {
+        let permissionGranted = try await requestPermissionIfNeeded()
+        guard permissionGranted else {
+            throw NotificationSchedulerError.permissionDenied
+        }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Reminder: \(task.title)"
+        content.body = task.nextAction.isEmpty
+            ? "Open Context Restore to continue this task."
+            : task.nextAction
+        content.sound = .default
+
+        let interval = max(1, remindAt.timeIntervalSinceNow)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "\(taskReminderPrefix).\(task.taskId)",
+            content: content,
+            trigger: trigger
+        )
+
+        center.removePendingNotificationRequests(withIdentifiers: ["\(taskReminderPrefix).\(task.taskId)"])
         try await add(request: request)
     }
 

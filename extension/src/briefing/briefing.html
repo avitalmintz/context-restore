@@ -10,7 +10,7 @@
     <main>
       <header>
         <h1>Context Restore</h1>
-        <p>Tasks inferred from your recent browsing activity.</p>
+        <p>Your intent, progress, and next step from recent browsing.</p>
         <div class="toolbar">
           <button id="refresh">Refresh</button>
           <label class="toggle">
@@ -22,15 +22,13 @@
         <p id="source-info" class="source-info"></p>
         <div class="mode-tabs" role="tablist" aria-label="Briefing Views">
           <button class="mode-tab active" data-mode="overview" role="tab" aria-selected="true">Overview</button>
-          <button class="mode-tab" data-mode="ai" role="tab" aria-selected="false">AI Briefing</button>
-          <button class="mode-tab" data-mode="detailed" role="tab" aria-selected="false">Detailed Briefs</button>
-          <button class="mode-tab" data-mode="gaps" role="tab" aria-selected="false">Gap Analysis</button>
+          <button class="mode-tab" data-mode="daily" role="tab" aria-selected="false">Daily Recap</button>
+          <button class="mode-tab" data-mode="detailed" role="tab" aria-selected="false">Action Plan</button>
         </div>
       </header>
       <section id="task-list" class="panel"></section>
-      <section id="ai-briefing" class="panel" hidden></section>
+      <section id="daily-summary" class="panel" hidden></section>
       <section id="detailed-briefing" class="panel" hidden></section>
-      <section id="gap-analysis" class="panel" hidden></section>
       <p id="empty" hidden>No active tasks yet. Browse, then refresh.</p>
     </main>
     <script type="module" src="./briefing.js"></script>

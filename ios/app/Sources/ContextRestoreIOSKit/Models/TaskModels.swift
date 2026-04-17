@@ -36,10 +36,22 @@ public struct TaskItem: Codable, Identifiable, Hashable {
     public let nextAction: String
     public let stats: TaskStats
     public let pages: [TaskPage]
+    public let relatedTasks: [RelatedTask]?
     public let openLoopScore: Double?
     public let nudgePhase: String?
     public let snapshotTs: Int64?
     public let schemaVersion: Int?
+}
+
+public struct RelatedTask: Codable, Hashable, Identifiable {
+    public var id: String { taskId }
+    public let taskId: String
+    public let title: String
+    public let domain: String?
+    public let category: String?
+    public let lastActivityTs: Int64
+    public let overlapScore: Double?
+    public let reason: String?
 }
 
 public struct TaskStats: Codable, Hashable {

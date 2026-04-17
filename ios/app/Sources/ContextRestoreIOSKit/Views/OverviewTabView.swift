@@ -6,7 +6,9 @@ public struct OverviewTabView: View {
 
     @State private var renameTarget: TaskItem?
     @State private var resumeTarget: TaskItem?
+    @State private var remindTarget: TaskItem?
     @State private var renameText: String = ""
+    @State private var remindAt: Date = Date().addingTimeInterval(60 * 60 * 24)
 
     public init(viewModel: TaskFeedViewModel) {
         self.viewModel = viewModel
@@ -39,6 +41,10 @@ public struct OverviewTabView: View {
                                 onRename: {
                                     renameText = task.title
                                     renameTarget = task
+                                },
+                                onRemind: {
+                                    remindAt = Date().addingTimeInterval(60 * 60 * 24)
+                                    remindTarget = task
                                 },
                                 onToggleDone: {
                                     Task {
@@ -104,6 +110,22 @@ public struct OverviewTabView: View {
                 }
             )
             .presentationDetents([.height(220)])
+        }
+        .sheet(item: $remindTarget) { task in
+            RemindTaskSheet(
+                taskTitle: task.title,
+                remindAt: $remindAt,
+                onCancel: {
+                    remindTarget = nil
+                },
+                onSave: {
+                    Task {
+                        await viewModel.setReminder(task: task, remindAt: remindAt)
+                        remindTarget = nil
+                    }
+                }
+            )
+            .presentationDetents([.height(260)])
         }
     }
 
@@ -216,6 +238,7 @@ private struct TaskCardView: View {
     let task: TaskItem
     let onResume: () -> Void
     let onRename: () -> Void
+    let onRemind: () -> Void
     let onToggleDone: () -> Void
     let onDeleteTaskContext: () -> Void
 
@@ -231,15 +254,16 @@ private struct TaskCardView: View {
             Text(task.briefing)
                 .foregroundStyle(.secondary)
 
-            Text("Next: \(task.nextAction)")
-                .font(.subheadline)
-
             HStack(spacing: 10) {
                 StatPill(label: "Pages", value: "\(task.stats.pageCount)")
                 StatPill(label: "Read", value: "\(task.stats.readCount)")
                 StatPill(label: "Skimmed", value: "\(task.stats.skimmedCount)")
                 StatPill(label: "Closed", value: "\(task.stats.bouncedCount)")
             }
+
+            Text("Progress \(Int(taskProgressPct.rounded()))% • ~\(taskMinutesLeft)m left")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             if !task.pages.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -258,6 +282,11 @@ private struct TaskCardView: View {
                                 Text(page.domain)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                ProgressView(value: pageProgressPct(page), total: 100)
+                                    .tint(ContextUI.accent)
+                                Text("\(Int(pageProgressPct(page).rounded()))% • ~\(pageMinutesLeft(page))m left")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
                         }
@@ -275,12 +304,44 @@ private struct TaskCardView: View {
                 Button(task.status == "done" ? "Reopen" : "Mark Done", action: onToggleDone)
                     .buttonStyle(.bordered)
 
+                Button("Remind…", action: onRemind)
+                    .buttonStyle(.bordered)
+
                 Button("Delete Context", role: .destructive, action: onDeleteTaskContext)
                     .buttonStyle(.bordered)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contextCard(tint: task.status.lowercased() == "done" ? .green.opacity(0.35) : ContextUI.accentSoft)
+    }
+
+    private var taskProgressPct: Double {
+        guard !task.pages.isEmpty else { return 0 }
+        return task.pages
+            .map(pageProgressPct)
+            .reduce(0, +) / Double(task.pages.count)
+    }
+
+    private var taskMinutesLeft: Int {
+        task.pages.map(pageMinutesLeft).reduce(0, +)
+    }
+
+    private func pageProgressPct(_ page: TaskPage) -> Double {
+        let inferred = max(page.completionScore, page.maxScrollPct * 0.85)
+        return min(100, max(0, inferred))
+    }
+
+    private func pageMinutesLeft(_ page: TaskPage) -> Int {
+        let progress = pageProgressPct(page)
+        if progress >= 97 {
+            return 0
+        }
+        let activeMs = Double(max(page.activeMs, 0))
+        if progress >= 8, activeMs >= 10_000 {
+            let totalEstimate = activeMs / (progress / 100)
+            return max(0, Int(round((totalEstimate - activeMs) / 60_000)))
+        }
+        return page.state.lowercased() == "read" ? 0 : 3
     }
 }
 
@@ -308,6 +369,40 @@ private struct RenameTaskSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", action: onSave)
                         .disabled(renameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+private struct RemindTaskSheet: View {
+    let taskTitle: String
+    @Binding var remindAt: Date
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Task Reminder") {
+                    Text(taskTitle)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    DatePicker(
+                        "Remind me at",
+                        selection: $remindAt,
+                        in: Date()...,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                }
+            }
+            .navigationTitle("Remind")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Set Reminder", action: onSave)
                 }
             }
         }

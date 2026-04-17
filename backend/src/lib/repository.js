@@ -219,19 +219,54 @@ async function upsertTaskSnapshotTx(client, userId, task, snapshotTs, schemaVers
   return { accepted: true, reason: "ok" };
 }
 
-export async function upsertTaskBatch({ userId, tasks, snapshotTs, schemaVersion }) {
+export async function upsertTaskBatch({
+  userId,
+  tasks,
+  snapshotTs,
+  schemaVersion,
+  replaceMissing = false
+}) {
   return withTransaction(async (client) => {
     let accepted = 0;
     let rejected = 0;
     const reasons = {};
+    const incomingTaskIds = [];
 
     for (const task of tasks) {
+      const taskId = String(task?.taskId || "").trim();
+      if (taskId) {
+        incomingTaskIds.push(taskId);
+      }
       const result = await upsertTaskSnapshotTx(client, userId, task, snapshotTs, schemaVersion);
       if (result.accepted) {
         accepted += 1;
       } else {
         rejected += 1;
         reasons[result.reason] = (reasons[result.reason] || 0) + 1;
+      }
+    }
+
+    if (replaceMissing) {
+      const safeTaskIds = [...new Set(incomingTaskIds)];
+      if (safeTaskIds.length) {
+        await client.query(
+          `
+            DELETE FROM task_snapshots
+            WHERE user_id = $1::uuid
+              AND snapshot_ts <= $3::bigint
+              AND task_id <> ALL($2::text[])
+          `,
+          [userId, safeTaskIds, toNum(snapshotTs, Date.now())]
+        );
+      } else {
+        await client.query(
+          `
+            DELETE FROM task_snapshots
+            WHERE user_id = $1::uuid
+              AND snapshot_ts <= $2::bigint
+          `,
+          [userId, toNum(snapshotTs, Date.now())]
+        );
       }
     }
 
