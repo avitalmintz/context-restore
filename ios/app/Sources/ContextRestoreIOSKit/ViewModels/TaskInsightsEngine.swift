@@ -35,9 +35,14 @@ public struct DetailedBriefItem: Identifiable, Hashable {
 
     public let taskId: String
     public let title: String
-    public let headline: String
-    public let observations: [String]
-    public let missingChecks: [String]
+    public let objective: String
+    public let intentLabel: String
+    public let decisionSnapshot: String
+    public let whyTimeline: [String]
+    public let findings: [String]
+    public let finishPlan: [String]
+    public let overlapHint: String?
+    public let closureHint: String
     public let topPages: [DetailedBriefPageNote]
 }
 
@@ -71,33 +76,42 @@ public enum TaskInsightsEngine {
     }
 
     public static func detailedBriefs(for tasks: [TaskItem]) -> [DetailedBriefItem] {
-        tasks
-            .sorted { $0.lastActivityTs > $1.lastActivityTs }
-            .map { task in
-                let kind = inferKind(for: task)
-                let ranked = rankedPages(for: task)
-                let topPages = Array(ranked.prefix(3)).map { page in
-                    DetailedBriefPageNote(
-                        url: page.url,
-                        title: page.title,
-                        domain: page.domain,
-                        state: page.state,
-                        interestScore: page.interestScore
-                    )
-                }
+        let ordered = tasks.sorted { $0.lastActivityTs > $1.lastActivityTs }
+        let overlap = overlapHints(for: ordered)
 
-                let observations = observationLines(for: task, kind: kind, rankedPages: ranked)
-                let missing = missingChecks(for: task, kind: kind)
-
-                return DetailedBriefItem(
-                    taskId: task.taskId,
-                    title: task.title,
-                    headline: headline(for: task, kind: kind),
-                    observations: observations,
-                    missingChecks: missing,
-                    topPages: topPages
+        return ordered.map { task in
+            let kind = inferKind(for: task)
+            let ranked = rankedPages(for: task)
+            let topPages = Array(ranked.prefix(3)).map { page in
+                DetailedBriefPageNote(
+                    url: page.url,
+                    title: page.title,
+                    domain: page.domain,
+                    state: page.state,
+                    interestScore: page.interestScore
                 )
             }
+
+            let decisionSnapshot = decisionSnapshot(for: task, rankedPages: ranked)
+            let timeline = timelineLines(for: task)
+            let findings = summaryFindings(for: task, kind: kind)
+            let plan = finishPlan(for: task, kind: kind, rankedPages: ranked)
+            let closeHint = closureHint(for: task)
+
+            return DetailedBriefItem(
+                taskId: task.taskId,
+                title: task.title,
+                objective: objectiveLine(for: task, kind: kind),
+                intentLabel: intentLabel(for: task),
+                decisionSnapshot: decisionSnapshot,
+                whyTimeline: timeline,
+                findings: findings,
+                finishPlan: plan,
+                overlapHint: overlap[task.taskId],
+                closureHint: closeHint,
+                topPages: topPages
+            )
+        }
     }
 
     public static func gapItems(for tasks: [TaskItem]) -> [GapAnalysisItem] {
@@ -196,47 +210,164 @@ public enum TaskInsightsEngine {
         return task.nextAction
     }
 
-    private static func headline(for task: TaskItem, kind: InferredTaskKind) -> String {
+    private static func objectiveLine(for task: TaskItem, kind: InferredTaskKind) -> String {
+        let topic = task.topic.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackTopic = topic.isEmpty ? task.title : topic
         switch kind {
         case .shopping:
-            return "Shopping comparison brief"
+            return "Objective: Decide on the best option for \(fallbackTopic)."
         case .travel:
-            return "Travel planning brief"
+            return "Objective: Convert travel browsing into a concrete itinerary."
         case .research:
-            return "Research brief"
+            return "Objective: Finish learning and capture one clear takeaway."
         case .news:
-            return "News tracking brief"
+            return "Objective: Catch up quickly and close the information loop."
         case .social:
-            return "Community thread brief"
+            return "Objective: Decide if this is meaningful follow-up or just browsing."
         case .other:
-            return "Task detail brief"
+            return "Objective: Recover intent and either complete or close this task."
         }
     }
 
-    private static func observationLines(for task: TaskItem, kind: InferredTaskKind, rankedPages: [TaskPage]) -> [String] {
+    private static func intentLabel(for task: TaskItem) -> String {
+        let score = intentScore(for: task)
+        if score >= 70 {
+            return "High intent (\(score)/100)"
+        }
+        if score >= 40 {
+            return "Medium intent (\(score)/100)"
+        }
+        return "Low intent (\(score)/100)"
+    }
+
+    private static func intentScore(for task: TaskItem) -> Int {
+        let activeMs = max(task.stats.activeMs ?? 0, task.pages.reduce(0) { $0 + $1.activeMs })
+        let revisits = task.stats.revisitCount ?? 0
+        let reads = task.stats.readCount
+        let pages = max(task.stats.pageCount, task.pages.count)
+        let topInterest = rankedPages(for: task).first?.interestScore ?? 0
+
+        let score = min(45, (Double(activeMs) / 60_000.0) * 4.0)
+            + min(20, Double(revisits * 5))
+            + min(20, Double(reads * 8))
+            + min(10, Double(pages * 2))
+            + min(5, topInterest / 20.0)
+
+        return Int(max(0, min(100, score)).rounded())
+    }
+
+    private static func decisionSnapshot(for task: TaskItem, rankedPages: [TaskPage]) -> String {
+        guard let top = rankedPages.first else {
+            return "No strong page signal yet."
+        }
+
+        var reasons: [String] = []
+        if top.activeMs > 0 {
+            reasons.append("spent \(formatMs(top.activeMs))")
+        }
+        if top.revisitCount > 0 {
+            reasons.append("revisited \(top.revisitCount)x")
+        }
+        if top.maxScrollPct >= 65 {
+            reasons.append("scrolled \(Int(top.maxScrollPct.rounded()))%")
+        }
+        if reasons.isEmpty {
+            reasons.append("opened repeatedly")
+        }
+        return "Leaning toward \"\(condensedTitle(top.title))\" because you \(reasons.joined(separator: ", "))."
+    }
+
+    private static func timelineLines(for task: TaskItem) -> [String] {
+        let ranked = rankedPages(for: task)
         var lines: [String] = []
-        lines.append("Active time: \(formatMs(task.stats.activeMs ?? 0)) across \(max(task.stats.pageCount, task.pages.count)) pages.")
-
-        if task.stats.revisitCount ?? 0 > 0 {
-            lines.append("You revisited this task \(task.stats.revisitCount ?? 0) times, which usually signals high intent.")
+        if let searchLike = task.pages.first(where: { pageContains($0, terms: ["search?", "google.com/search", "bing.com/search"]) }) {
+            lines.append("Started with search: \(condensedTitle(searchLike.title)).")
         }
-
-        if let top = rankedPages.first {
-            lines.append("Highest-interest page: \"\(condensedTitle(top.title))\" (score \(Int(top.interestScore.rounded()))).")
+        if let first = ranked.first {
+            lines.append("Focused on: \(condensedTitle(first.title)).")
         }
+        if let revisit = ranked.first(where: { $0.revisitCount > 0 }) {
+            lines.append("Revisited: \(condensedTitle(revisit.title)) (\(revisit.revisitCount)x).")
+        }
+        return Array(lines.prefix(3))
+    }
+
+    private static func summaryFindings(for task: TaskItem, kind: InferredTaskKind) -> [String] {
+        var lines: [String] = []
+        lines.append("Tracked \(max(task.stats.pageCount, task.pages.count)) pages with \(formatMs(task.stats.activeMs ?? 0)) active time.")
+        lines.append("Behavior: \(task.stats.readCount) read • \(task.stats.skimmedCount) skimmed • \(task.stats.unopenedCount) unopened • \(task.stats.bouncedCount) closed quickly.")
 
         switch kind {
         case .shopping:
-            lines.append("Shopping signal: \(task.stats.bouncedCount) closed quickly, \(task.stats.skimmedCount) skimmed.")
-        case .travel:
-            lines.append("Travel signal: \(task.stats.deepScrollCount ?? 0) deep scroll events suggest detail checking.")
+            let hasReviews = task.pages.contains { pageContains($0, terms: ["review", "rating", "stars"]) }
+            let hasReturns = task.pages.contains { pageContains($0, terms: ["return", "refund", "policy"]) }
+            lines.append("Coverage: reviews \(hasReviews ? "checked" : "missing"), returns \(hasReturns ? "checked" : "missing").")
         case .research, .news:
-            lines.append("Reading signal: \(task.stats.readCount) fully read, \(task.stats.skimmedCount) skimmed.")
+            lines.append(task.stats.readCount > 0 ? "You completed at least one source." : "You have not fully read a source yet.")
+        case .travel:
+            let hasFlights = task.pages.contains { pageContains($0, terms: ["flight", "airline"]) }
+            let hasHotels = task.pages.contains { pageContains($0, terms: ["hotel", "airbnb", "lodging"]) }
+            lines.append("Coverage: flights \(hasFlights ? "checked" : "missing"), stays \(hasHotels ? "checked" : "missing").")
         case .social, .other:
             break
         }
-
         return lines
+    }
+
+    private static func finishPlan(for task: TaskItem, kind: InferredTaskKind, rankedPages: [TaskPage]) -> [String] {
+        var plan: [String] = []
+        if let next = rankedPages.first(where: { $0.state == "unopened" || $0.state == "skimmed" }) ?? rankedPages.first {
+            plan.append("Open \"\(condensedTitle(next.title))\" next and finish it fully.")
+        }
+        if let missing = missingChecks(for: task, kind: kind).first {
+            plan.append(missing)
+        } else {
+            plan.append(kind == .shopping ? "Shortlist top 2 options and decide now." : "Resolve the remaining page and close this task.")
+        }
+        plan.append(closureHint(for: task))
+        return Array(plan.prefix(3))
+    }
+
+    private static func closureHint(for task: TaskItem) -> String {
+        let activeMs = max(task.stats.activeMs ?? 0, task.pages.reduce(0) { $0 + $1.activeMs })
+        if max(task.stats.pageCount, task.pages.count) <= 1 && activeMs < 120_000 && task.stats.readCount == 0 {
+            return "Likely quick detour: mark done or delete context if no longer relevant."
+        }
+        if task.stats.skimmedCount == 0 && task.stats.unopenedCount == 0 {
+            return "Everything is reviewed; mark done if decision is made."
+        }
+        return "Keep this open only if a decision is still pending."
+    }
+
+    private static func overlapHints(for tasks: [TaskItem]) -> [String: String] {
+        var result: [String: String] = [:]
+        let tokenMap: [String: Set<String>] = Dictionary(uniqueKeysWithValues: tasks.map { task in
+            let tokens = tokenize(task.title + " " + task.topic + " " + task.pages.map { $0.title }.joined(separator: " "))
+                .filter { $0.count >= 3 }
+            return (task.taskId, Set(tokens))
+        })
+
+        for task in tasks {
+            let domainsA = Set(([task.domain] + task.domains).map { $0.lowercased() })
+            var overlaps: [String] = []
+            for other in tasks where other.taskId != task.taskId {
+                let domainsB = Set(([other.domain] + other.domains).map { $0.lowercased() })
+                let sharedDomain = !domainsA.intersection(domainsB).isEmpty
+                let tokensA = tokenMap[task.taskId] ?? []
+                let tokensB = tokenMap[other.taskId] ?? []
+                let common = tokensA.intersection(tokensB).count
+                let denominator = max(max(tokensA.count, tokensB.count), 1)
+                let tokenOverlap = Double(common) / Double(denominator)
+                if tokenOverlap >= 0.22 && sharedDomain {
+                    overlaps.append(other.title)
+                }
+            }
+            if !overlaps.isEmpty {
+                result[task.taskId] = "Possible duplicate context with: " + overlaps.prefix(2).joined(separator: " • ")
+            }
+        }
+
+        return result
     }
 
     private static func missingChecks(for task: TaskItem, kind: InferredTaskKind) -> [String] {
@@ -359,6 +490,15 @@ public enum TaskInsightsEngine {
 
     private static func containsAny(_ text: String, terms: [String]) -> Bool {
         terms.contains { text.contains($0.lowercased()) }
+    }
+
+    private static func tokenize(_ text: String) -> [String] {
+        text
+            .lowercased()
+            .replacingOccurrences(of: "https://", with: " ")
+            .replacingOccurrences(of: "http://", with: " ")
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
     }
 
     private static func condensedTitle(_ value: String) -> String {

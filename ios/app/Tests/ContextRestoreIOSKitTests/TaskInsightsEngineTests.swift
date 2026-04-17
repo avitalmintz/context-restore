@@ -132,6 +132,7 @@ final class TaskInsightsEngineTests: XCTestCase {
             nextAction: "Next action",
             stats: stats,
             pages: pages,
+            relatedTasks: nil,
             openLoopScore: 0.5,
             nudgePhase: nil,
             snapshotTs: 1_776_000_001_000,

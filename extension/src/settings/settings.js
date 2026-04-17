@@ -4,13 +4,6 @@ const pauseToggle = document.getElementById("pause-toggle");
 const clearBtn = document.getElementById("clear-data");
 const retentionInput = document.getElementById("retention-days");
 const saveRetentionBtn = document.getElementById("save-retention");
-const nudgeEnabledInput = document.getElementById("nudge-enabled");
-const quietStartInput = document.getElementById("quiet-start");
-const quietEndInput = document.getElementById("quiet-end");
-const dailyCapInput = document.getElementById("daily-cap");
-const minInactiveHoursInput = document.getElementById("min-inactive-hours");
-const saveRemindersBtn = document.getElementById("save-reminders");
-const nudgeSummaryEl = document.getElementById("nudge-summary");
 const syncEnabledInput = document.getElementById("sync-enabled");
 const syncBackendUrlInput = document.getElementById("sync-backend-url");
 const syncApiTokenInput = document.getElementById("sync-api-token");
@@ -28,10 +21,6 @@ const statusEl = document.getElementById("status");
 function setStatus(text, ok = true) {
   statusEl.textContent = text;
   statusEl.className = ok ? "ok" : "";
-}
-
-function updateNudgeSummary(settings, dailyCount = 0) {
-  nudgeSummaryEl.textContent = `Today sent: ${dailyCount} / ${settings.dailyCap}`;
 }
 
 function formatTime(ts) {
@@ -69,14 +58,7 @@ async function loadSettings() {
 
   pauseToggle.checked = response.settings.trackingPaused;
   retentionInput.value = String(response.settings.retentionDays || 30);
-  const nudgeSettings = response.settings.nudgeSettings || {};
   const syncSettings = response.settings.syncSettings || {};
-  nudgeEnabledInput.checked = Boolean(nudgeSettings.enabled);
-  quietStartInput.value = String(nudgeSettings.quietHoursStart ?? 22);
-  quietEndInput.value = String(nudgeSettings.quietHoursEnd ?? 8);
-  dailyCapInput.value = String(nudgeSettings.dailyCap ?? 3);
-  minInactiveHoursInput.value = String(nudgeSettings.minInactiveHours ?? 18);
-  updateNudgeSummary(nudgeSettings, response.settings.nudgeDailyCount || 0);
   syncEnabledInput.checked = Boolean(syncSettings.enabled);
   syncBackendUrlInput.value = String(syncSettings.backendUrl || "");
   syncApiTokenInput.value = String(syncSettings.apiToken || "");
@@ -146,35 +128,6 @@ saveRetentionBtn.addEventListener("click", async () => {
 
   retentionInput.value = String(response.retentionDays);
   setStatus(`Retention updated to ${response.retentionDays} days`, true);
-});
-
-saveRemindersBtn.addEventListener("click", async () => {
-  const settings = {
-    enabled: nudgeEnabledInput.checked,
-    quietHoursStart: readBoundedInt(quietStartInput, 0, 23, 22),
-    quietHoursEnd: readBoundedInt(quietEndInput, 0, 23, 8),
-    dailyCap: readBoundedInt(dailyCapInput, 1, 10, 3),
-    minInactiveHours: readBoundedInt(minInactiveHoursInput, 1, 168, 18)
-  };
-
-  const response = await chrome.runtime.sendMessage({
-    type: MESSAGE_TYPES.SET_NUDGE_SETTINGS,
-    settings
-  });
-
-  if (!response?.ok) {
-    setStatus(response?.error || "Failed to save reminder settings", false);
-    return;
-  }
-
-  const next = response.nudgeSettings;
-  nudgeEnabledInput.checked = Boolean(next.enabled);
-  quietStartInput.value = String(next.quietHoursStart);
-  quietEndInput.value = String(next.quietHoursEnd);
-  dailyCapInput.value = String(next.dailyCap);
-  minInactiveHoursInput.value = String(next.minInactiveHours);
-  updateNudgeSummary(next);
-  setStatus("Reminder settings saved", true);
 });
 
 saveSyncBtn.addEventListener("click", async () => {

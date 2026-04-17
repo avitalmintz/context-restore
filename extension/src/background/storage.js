@@ -37,7 +37,9 @@ export async function addEvent(event) {
   db.close();
 }
 
-export async function getRecentEvents(limit = 500, sinceTs = 0) {
+export async function getRecentEvents(limit = 500, sinceTs = 0, options = {}) {
+  const includeSoftDeleted = Boolean(options.includeSoftDeleted);
+
   const db = await openDb();
   const tx = db.transaction(EVENTS_STORE, "readonly");
   const index = tx.objectStore(EVENTS_STORE).index("by_ts");
@@ -49,8 +51,11 @@ export async function getRecentEvents(limit = 500, sinceTs = 0) {
 
   await txComplete(tx);
   db.close();
-  events.sort((a, b) => b.ts - a.ts);
-  return events.slice(0, limit);
+  const filtered = includeSoftDeleted
+    ? events
+    : events.filter((event) => !Number(event?.deleted_at || 0));
+  filtered.sort((a, b) => b.ts - a.ts);
+  return filtered.slice(0, limit);
 }
 
 export async function pruneEventsBefore(cutoffTs) {
@@ -96,10 +101,14 @@ export async function deleteEventsByUrls(urls) {
     request.onsuccess = () => resolve(request.result || []);
   });
 
+  const deletedAt = Date.now();
   let deleted = 0;
   for (const event of allEvents) {
-    if (urlSet.has(event.url)) {
-      store.delete(event.event_id);
+    if (urlSet.has(event.url) && !Number(event?.deleted_at || 0)) {
+      store.put({
+        ...event,
+        deleted_at: deletedAt
+      });
       deleted += 1;
     }
   }
@@ -107,4 +116,34 @@ export async function deleteEventsByUrls(urls) {
   await txComplete(tx);
   db.close();
   return deleted;
+}
+
+export async function purgeDeletedEventsBefore(cutoffDeletedAtTs) {
+  const cutoffTs = Number(cutoffDeletedAtTs || 0);
+  if (!Number.isFinite(cutoffTs) || cutoffTs <= 0) {
+    return 0;
+  }
+
+  const db = await openDb();
+  const tx = db.transaction(EVENTS_STORE, "readwrite");
+  const store = tx.objectStore(EVENTS_STORE);
+
+  const allEvents = await new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result || []);
+  });
+
+  let purged = 0;
+  for (const event of allEvents) {
+    const deletedAt = Number(event?.deleted_at || 0);
+    if (deletedAt > 0 && deletedAt < cutoffTs) {
+      store.delete(event.event_id);
+      purged += 1;
+    }
+  }
+
+  await txComplete(tx);
+  db.close();
+  return purged;
 }

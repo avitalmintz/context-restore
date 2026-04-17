@@ -40,7 +40,7 @@ function renderTasks(tasks) {
       renderText(
         "div",
         "task-meta",
-        `${task.stats.pageCount} pages • confidence ${Math.round(task.confidence * 100)}% • ${formatAgo(
+        `${task.stats.pageCount} pages • status ${task.workflowState || task.status || "active"} • ${formatAgo(
           task.lastActivityTs
         )}`
       )
