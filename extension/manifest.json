@@ -1,42 +1,26 @@
 {
   "manifest_version": 3,
-  "name": "Context Restore (Prototype)",
-  "description": "Reconstruct browsing intent and show task briefings instead of raw tab piles.",
-  "version": "0.1.0",
+  "name": "Semantic Tab Groups",
+  "description": "See your open tabs grouped by what they're about, on one scrollable page.",
+  "version": "0.2.0",
   "icons": {
     "128": "src/shared/icon-128.png"
   },
   "permissions": [
     "tabs",
-    "webNavigation",
-    "storage",
-    "alarms",
-    "idle"
+    "storage"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://api.anthropic.com/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
     "type": "module"
   },
   "action": {
-    "default_title": "Context Restore",
+    "default_title": "Open Tab Groups",
     "default_icon": {
       "128": "src/shared/icon-128.png"
-    },
-    "default_popup": "src/popup/popup.html"
-  },
-  "options_page": "src/settings/settings.html",
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "src/content/engagement.js"
-      ],
-      "run_at": "document_idle"
     }
-  ]
+  }
 }

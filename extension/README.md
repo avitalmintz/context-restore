@@ -1,35 +1,32 @@
-# Context Restore (Prototype)
+# Semantic Tab Groups
 
-Chrome extension prototype that infers tasks from browsing behavior and generates quick context briefings.
+Chrome extension that opens a single scrollable page showing tabs you've saved, clustered by what they're about. Uses the Anthropic API (Claude Haiku) for true semantic clustering — multiple AI articles from different news sites land in one group, multiple shopping pages from different retailers land in another. Falls back to keyword heuristics if no API key is set.
 
-## Current status
-- Sprint 1 through Sprint 3 MVP backlog implemented
-- Event ingestion wired (tabs, navigation, engagement snapshots)
-- Graph-clustered task feed with per-page state/interest/completion scoring
-- Task actions implemented: resume, rename, mark done/reopen
-- Settings controls implemented: pause tracking, retention days, reminder settings, delete local data
-- Reminder engine implemented: open-loop detection, hourly evaluation, quiet hours, daily cap, per-task cooldown
-- Backend sync (Phase 2) implemented: register device, upload snapshots, pull/ack task actions
-- Test harness added for inference and nudges (`npm test`)
+The page is a snapshot — closing a tab in your browser doesn't remove it from the list.
 
 ## Load in Chrome
-1. Open `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Click **Load unpacked**.
-4. Select this folder: `extension/`.
+1. Open `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select this `extension/` folder
+
+## Set up the API key
+1. Get a key from [console.anthropic.com](https://console.anthropic.com/) → Settings → API Keys.
+2. Click the toolbar icon to open the groups page.
+3. Click **Settings**, paste the key (starts with `sk-ant-`), click **Save**.
+
+The key is stored in `chrome.storage.local` and only sent to `api.anthropic.com` when you press Refresh. Each Refresh costs roughly $0.001 with Claude Haiku.
+
+## Use it
+- Click the toolbar icon → opens the groups page.
+- Click **Refresh** → adds your currently open tabs to the saved set, then asks Claude to cluster them all.
+- Click any tab in the list → focuses it if still open, otherwise opens it as a new tab.
+- Hover a tab and click **×** → removes it from the saved set.
+- Closing a tab in your browser does NOT remove it from the list.
 
 ## Files
-- `manifest.json`: extension manifest and permissions
-- `src/background`: event ingestion and task-feed generation
-- `src/content`: page engagement signal capture
-- `src/popup`: quick snapshot UI
-- `src/briefing`: full task briefing UI
-- `src/settings`: local controls (pause tracking, delete data)
-- `src/background/nudges.js`: open-loop scoring and reminder gating logic
-- `docs/`: extension backlog, sprint plan, and repo structure
-- `../ios/docs/IOS_COMPANION_APP_SPEC.md`: iOS companion app + sync architecture spec
-
-## Prototype caveats
-- Task clustering is heuristic graph clustering and still needs calibration on real browsing traces.
-- Briefings are template-based and conservative (no LLM summarization yet).
-- Sync uses local dev token auth and is intended for personal prototype use.
+- `manifest.json` — extension manifest, `tabs` + `storage` permissions, host permission for api.anthropic.com
+- `src/background/service-worker.js` — opens the groups page on toolbar click
+- `src/background/inference.js` — heuristic clusterer (fallback)
+- `src/groups/groups.html` + `groups.js` — the scrollable groups page, snapshot storage, Anthropic API call
+- `src/shared/constants.js` — category colors and labels
