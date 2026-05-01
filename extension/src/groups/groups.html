@@ -130,6 +130,12 @@
         border-radius: 12px;
         padding: 16px 18px;
         margin-bottom: 14px;
+        transition: border-color 0.15s, background 0.15s;
+      }
+
+      .group.drop-target {
+        border-color: var(--accent);
+        background: #ecf5ef;
       }
 
       .group-head {
@@ -154,6 +160,36 @@
         font-size: 16px;
         font-weight: 600;
         flex: 1;
+        outline: none;
+        padding: 2px 4px;
+        border-radius: 4px;
+        cursor: text;
+      }
+
+      .group-title:hover { background: #f4f1e8; }
+      .group-title:focus { background: #f4f1e8; }
+      .group-title[data-readonly="true"] { cursor: default; }
+      .group-title[data-readonly="true"]:hover { background: transparent; }
+
+      .group-delete {
+        flex-shrink: 0;
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        font-size: 18px;
+        line-height: 1;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 0.15s, background 0.15s;
+      }
+
+      .group:hover .group-delete { opacity: 1; }
+
+      .group-delete:hover {
+        background: #f4f1e8;
+        color: #b91c1c;
       }
 
       .count {
@@ -173,10 +209,21 @@
         gap: 10px;
         padding: 8px 6px;
         border-radius: 6px;
-        cursor: pointer;
+        cursor: grab;
+        transition: opacity 0.15s;
       }
 
+      .tab-row:active { cursor: grabbing; }
+      .tab-row.dragging { opacity: 0.4; }
       .tab-row:hover { background: #f1efe8; }
+
+      .empty-group-hint {
+        padding: 14px 6px;
+        font-size: 12px;
+        color: var(--muted);
+        font-style: italic;
+        text-align: center;
+      }
 
       .favicon {
         width: 16px;
@@ -243,6 +290,7 @@
       </div>
       <div class="header-actions">
         <button id="settings-toggle" class="ghost">Settings</button>
+        <button id="new-group" class="ghost">+ New group</button>
         <button id="refresh">Refresh</button>
       </div>
     </header>
