@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tab Groups</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f6f2;
+        --surface: #ffffff;
+        --text: #1f1f1a;
+        --muted: #66665c;
+        --accent: #1b6f4a;
+      }
+
+      body {
+        margin: 0;
+        width: 280px;
+        font-family: "Avenir Next", "Segoe UI", -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 14px;
+      }
+
+      h1 {
+        margin: 0 0 4px;
+        font-size: 14px;
+      }
+
+      .sub {
+        margin: 0 0 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .current {
+        background: var(--surface);
+        border: 1px solid #e5e1d8;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+
+      .current-title {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .current-domain {
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 2px;
+      }
+
+      button {
+        width: 100%;
+        border: 0;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button + button { margin-top: 8px; }
+      button[disabled] { opacity: 0.6; cursor: progress; }
+
+      .primary { background: var(--accent); color: #fff; }
+      .ghost { background: #ecece5; color: var(--text); }
+
+      #status {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        min-height: 16px;
+      }
+
+      #status.error { color: #b91c1c; }
+    </style>
+  </head>
+  <body>
+    <h1>Tab Groups</h1>
+    <p class="sub">Save tabs to your groups page.</p>
+    <div class="current" id="current" hidden>
+      <div class="current-title" id="current-title"></div>
+      <div class="current-domain" id="current-domain"></div>
+    </div>
+    <button id="add-this" class="primary">Add this tab</button>
+    <button id="open-groups" class="ghost">Open groups page</button>
+    <div id="status"></div>
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>
